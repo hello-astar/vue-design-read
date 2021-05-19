@@ -1,0 +1,19 @@
+{
+  "name": "vue-read",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node ./index.js",
+    "build": "webpack"
+  },
+  "keywords": [
+    "vue"
+  ],
+  "author": "astar",
+  "license": "ISC",
+  "devDependencies": {
+    "webpack": "^5.37.1",
+    "webpack-cli": "^4.7.0"
+  }
+}
