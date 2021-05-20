@@ -2,7 +2,7 @@
  * @Author: astar
  * @Date: 2021-05-19 15:24:13
  * @LastEditors: astar
- * @LastEditTime: 2021-05-19 18:49:48
+ * @LastEditTime: 2021-05-20 13:50:18
  * @Description: 文件描述
  * @FilePath: \vue\packages\mount.js
  */
@@ -67,7 +67,7 @@ const mountElement = function (vnode, container, isSVG) {
   if (childFlags !== ChildrenFlags.NO_CHILDREN) {
     if (childFlags & ChildrenFlags.SINGLE_VNODE) {
       mount(children, el, isSVG)
-    } else if (ChildrenFlags & ChildrenFlags.MULTIPLE_VNODES) {
+    } else if (childFlags & ChildrenFlags.MULTIPLE_VNODES) {
       for (let i = 0; i < children.length; i++) {
         mount(children[i], el, isSVG)
       }

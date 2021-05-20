@@ -8,6 +8,77 @@
   <script src="./dist/index.js"></script>
 </head>
 <body>
-  <div id="app"></div>
+  <div id="app">
+    <input type="text" v-model="test">
+  </div>
 </body>
+<script>
+  class MVVM {
+    constructor () {
+      this.$options = options || {}
+      let data = this._data = this.$options.data()
+      // 数据代理
+      for (let key in data) {
+        this._proxyData(key)
+      }
+      // 数据劫持
+      observe(data, this)
+      this.$compile = new Compile(options.el || document.body, this)
+    }
+    
+    _proxyData (key) {
+      Object.defineProperty(this, key, {
+        configurable: true,
+        enumerable: true,
+        get: () => {
+          return this.data[key]
+        },
+        set: (val) => {
+          this.data[key] = val
+        }
+      })
+    }
+  }
+
+  function observe (obj) {
+
+  }
+  class Observer {
+    constructor () {
+
+    }
+
+    subscribe () {
+
+    }
+
+    broadcast () {
+      
+    }
+  }
+
+  class Compiler {
+    
+  }
+  const { h, render } = Vue
+  // (function create () {
+  //   const dynamicClass1 = { 'a': true, 'b': false }
+  //   const dynamicClass2 = [ 'c', 'd' ]
+  //   const vnode = h('div', { style: { color: 'red' }, class: ['test', dynamicClass1], onClick: function () { console.log('click me') } }, [h('span', null, '哈哈哈'), h('div', null, 'kk')])
+  //   render(vnode, document.getElementById('app'))
+    
+  //   setTimeout(() => {
+  //       render(h('div', { class: ['test', dynamicClass2] }, h('span', null, '呵呵')), document.getElementById('app'))
+  //   }, 1000)
+  // })()
+  let mvvm = new MVVM({
+    el: 'app',
+    data: function () {
+      return {
+        test: 'hahah'
+      }
+    }
+  })
+  mvvm.test = 'jjjj'
+</script>
 </html>

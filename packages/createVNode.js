@@ -2,7 +2,7 @@
  * @Author: astar
  * @Date: 2021-05-19 18:14:57
  * @LastEditors: astar
- * @LastEditTime: 2021-05-19 18:30:15
+ * @LastEditTime: 2021-05-20 13:49:52
  * @Description: 文件描述
  * @FilePath: \vue\packages\createVNode.js
  */
@@ -29,7 +29,7 @@ export const createTextVNode = function (text) {
     tag: null,
     data: null,
     children: text,
-    flag: VNodeFlags.TEXT,
+    flags: VNodeFlags.TEXT,
     childFlags: ChildrenFlags.SINGLE_VNODE,
     el: null
   }
