@@ -277,12 +277,39 @@ var mount = function (vnode, container, isSVG) {
         mountPortal(vnode, container, isSVG) // 挂载Portal
     }
 }
-const patch = function (preVNode, vnode, container) {
-    console.log(preVNode, vnode, container)
+
+
+
+
+const replaceVNode = function (prevVNode, nextVNode, container) {
+    container.removeChild(prevVNode.el)
+    mount(nextVNode, container)
+}
+
+const patchElement = function (prevVNode, nextVNode, container) {
+    console.log('hhhhhhhhhhh')
+}
+
+const patch = function (prevVNode, nextVNode, container) {
+    const nextFlags = nextVNode.flags
+    const prevFlags = prevVNode.flags
+    if (prevFlags !== nextFlags) { // flags不同，无需对比直接替换
+        replaceVNode(prevVNode, nextVNode, container)
+    } else if (nextFlags & VNodeFlags.ELEMENT) {
+        patchElement(prevVNode, nextVNode, container)
+    } else if (nextFlags & VNodeFlags.COMPONENT) {
+        patchComponent(prevVNode, nextVNode, container)
+    } else if (nextFlags & VNodeFlags.TEXT) {
+        patchText(prevVNode, nextVNode, container)
+    } else if (nextFlags & VNodeFlags.FRAGMENT) {
+        patchFragment(prevVNode, nextVNode, container)
+    } else if (nextFlags & VNodeFlags.PORTAL) {
+        patchPortal(prevVNode, nextVNode, container)
+    }
 }
 const render = function (vnode, container) {
-    const preVNode = container.vnode
-    if (!preVNode) {
+    const prevVNode = container.vnode
+    if (!prevVNode) {
         if (vnode) {
             let isSVG = vnode.flags & VNodeFlags.ELEMENT_SVG
             mount(vnode, container, isSVG)
@@ -290,10 +317,10 @@ const render = function (vnode, container) {
         }
     } else {
         if (vnode) {
-            patch(preVNode, vnode, container)
+            patch(prevVNode, vnode, container)
             container.vnode = vnode
         } else {
-            container.removeChild(preVNode.el)
+            container.removeChild(prevVNode.el)
             container.vnode = null
         }
     }
@@ -335,7 +362,7 @@ const vnode = h('div', { style: { color: 'red' }, class: ['test', dynamicClass1]
 
 render(vnode, document.getElementById('app'))
 setTimeout(() => {
-    render(null, document.getElementById('app'))
+    render(h('div', null, [h(MyFunctionalComponent, null, null), h(MyComponent, null, null)]), document.getElementById('app'))
 }, 1000)
 
 </script>

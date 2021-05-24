@@ -9,76 +9,122 @@
 </head>
 <body>
   <div id="app">
+    <div>{{test}}</div>
+    <div>{{hello}}</div>
     <input type="text" v-model="test">
   </div>
 </body>
 <script>
+  let activeUpdate = null
   class MVVM {
-    constructor () {
+    constructor (options) {
       this.$options = options || {}
-      let data = this._data = this.$options.data()
-      // 数据代理
-      for (let key in data) {
-        this._proxyData(key)
-      }
+      this._data = this.$options.data()
+      this.$el = document.querySelector(options.el)
       // 数据劫持
-      observe(data, this)
-      this.$compile = new Compile(options.el || document.body, this)
+      this.observe()
+      this.compile(this.$el)
     }
     
-    _proxyData (key) {
-      Object.defineProperty(this, key, {
-        configurable: true,
-        enumerable: true,
-        get: () => {
-          return this.data[key]
-        },
-        set: (val) => {
-          this.data[key] = val
-        }
-      })
-    }
-  }
-
-  function observe (obj) {
-
-  }
-  class Observer {
-    constructor () {
-
-    }
-
-    subscribe () {
-
-    }
-
-    broadcast () {
-      
-    }
-  }
-
-  class Compiler {
-    
-  }
-  const { h, render } = Vue
-  // (function create () {
-  //   const dynamicClass1 = { 'a': true, 'b': false }
-  //   const dynamicClass2 = [ 'c', 'd' ]
-  //   const vnode = h('div', { style: { color: 'red' }, class: ['test', dynamicClass1], onClick: function () { console.log('click me') } }, [h('span', null, '哈哈哈'), h('div', null, 'kk')])
-  //   render(vnode, document.getElementById('app'))
-    
-  //   setTimeout(() => {
-  //       render(h('div', { class: ['test', dynamicClass2] }, h('span', null, '呵呵')), document.getElementById('app'))
-  //   }, 1000)
-  // })()
-  let mvvm = new MVVM({
-    el: 'app',
-    data: function () {
-      return {
-        test: 'hahah'
+    observe () {
+      for (let key in this._data) {
+        let dep = new Dep()
+        Object.defineProperty(this, key, {
+          configurable: true,
+          enumerable: true,
+          get: () => {
+            dep.depend()
+            return this._data[key]
+          },
+          set: (val) => {
+            this._data[key] = val
+            dep.notify()
+          }
+        })
       }
     }
-  })
-  mvvm.test = 'jjjj'
+
+    // 解析DOM，生成VNODE
+    compile (el) {
+      // // 渲染页面
+      // const { h, render } = Vue
+
+      // const vnode = h('div', null, [h('span', null, '哈哈哈'), h('div', null, 'kk')])
+      // render(vnode, document.getElementById('app'))
+
+      // console.log(document.getElementById('app').vnode)
+
+      // setTimeout(() => {
+      //     render(h('div', { class: ['test'] }, h('span', null, '呵呵')), document.getElementById('app'))
+      // }, 1000)
+
+
+      let reg = /\{\{(.*)\}\}/
+      let children = el.childNodes
+      if (!children.length) return
+      for (let i = 0; i < children.length; i++) {
+        let child = children[i]
+        let nodeType = child.nodeType
+        if (nodeType === 3 && child.textContent) { // 普通文本
+          if (reg.test(child.textContent)) {
+            const _this = this
+            let key = RegExp.$1
+            activeUpdate = function () {
+              if (key in _this) {
+                child.textContent = _this[key]
+              }
+            }
+            activeUpdate()
+            activeUpdate = null
+          }
+        } else {
+          this.compile(child)
+        }
+      }
+    }
+  }
+
+  class Dep {
+    constructor () {
+      this.subs = new Set()
+    }
+
+    depend () {
+      if (activeUpdate) {
+        this.subs.add(activeUpdate)
+      }
+    }
+
+    notify () {
+      this.subs.forEach(sub => sub())
+    }
+  }
+
+  // let mvvm = new MVVM({
+  //   el: '#app',
+  //   data: function () {
+  //     return {
+  //       test: 'hahah',
+  //       hello: '??'
+  //     }
+  //   }
+  // })
+  // setTimeout(() => {
+  //   mvvm.test = 'jjjj'
+  // }, 1000)
+
+  // 渲染页面
+  const { h, render } = Vue
+
+  const vnode = h('div', null, [h('span', null, '哈哈哈'), h('div', null, 'kk')])
+  render(vnode, document.getElementById('app'))
+
+  console.log(document.getElementById('app').vnode)
+
+  setTimeout(() => {
+      render(h('div', { class: ['test'] }, h('span', null, '呵呵')), document.getElementById('app'))
+  }, 1000)
+
+
 </script>
 </html>

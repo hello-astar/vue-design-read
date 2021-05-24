@@ -2,7 +2,7 @@
  * @Author: astar
  * @Date: 2021-05-19 15:31:14
  * @LastEditors: astar
- * @LastEditTime: 2021-05-24 15:27:20
+ * @LastEditTime: 2021-05-24 17:34:27
  * @Description: 文件描述
  * @FilePath: \vue\config\consts.js
  */
@@ -52,3 +52,5 @@ export const VNodeFlags = VNODEFLAGS
 export const ChildrenFlags = CHILDRENFLAGS
 export const Fragment = Symbol()
 export const Portal = Symbol()
+
+export const domPropsRE = /\[A-Z]|^(?:value|checked|selected|muted)$/

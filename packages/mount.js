@@ -1,24 +1,6 @@
 import { VNodeFlags, ChildrenFlags } from '../config/consts.js'
 import { createTextVNode } from './createVNode.js'
-
-// 处理展开class
-const serialization = function (args) {
-  let res = ''
-  for (let item of args) {
-      if (typeof item === 'string') {
-          res += item
-      } else if (Array.isArray(item)) {
-          res += (' ' + item.join(' '))
-      } else {
-          for (let key in item) {
-              if (item[key]) {
-                  res += (' ' + key)
-              }
-          }
-      }
-  }
-  return res
-}
+import { patchData } from './patch.js'
 
 const mountElement = function (vnode, container, isSVG) {
   const { tag, data, children, childFlags, flags } = vnode
@@ -27,33 +9,7 @@ const mountElement = function (vnode, container, isSVG) {
   vnode.el = el
 
   for (let key in data) {
-    switch (key) {
-      case 'style':
-        for (let k in data[key]) {
-          el.style[k] = data[key][k]
-        }
-        break
-      case 'class':
-        if (isSVG) {
-          el.setAttribute('class', serialization(data.class))
-        } else {
-          el.className = serialization(data.class)
-        }
-        break
-      default:
-        const domPropsRE = /\[A-Z]|^(?:value|checked|selected|muted)$/
-        if (key[0] === 'o' && key[1] === 'n') {
-            // 事件
-            el.addEventListener(key.slice(2).toLowerCase(), data[key])
-        } else if (domPropsRE.test(key)) {
-            // 当作 DOM Prop 处理
-            el[key] = data[key]
-        } else {
-            // 当作 Attr 处理
-            el.setAttribute(key, data[key])
-        }
-        break
-    }
+    patchData(el, key, null, data[key], isSVG)
   }
 
   // 处理children
