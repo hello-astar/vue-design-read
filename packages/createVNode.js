@@ -2,7 +2,7 @@
  * @Author: astar
  * @Date: 2021-05-19 18:14:57
  * @LastEditors: astar
- * @LastEditTime: 2021-05-20 13:49:52
+ * @LastEditTime: 2021-05-24 14:30:57
  * @Description: 文件描述
  * @FilePath: \vue\packages\createVNode.js
  */
@@ -45,11 +45,11 @@ export const h = function (tag, data, children) {
     flags === VNodeFlags.Portal
     tag = data && data.target
   } else {
-    if (tag !== null && typeof tag === 'object') {
+    if (tag !== null && typeof tag === 'object') { // vue2
       flags = tag.functional
       ? VNodeFlags.COMPONENT_FUNCTIONAL
       : VNodeFlags.COMPONENT_STATEFUL_NORMAL
-    } else if (typeof tag === 'function') {
+    } else if (typeof tag === 'function') { // vue3
       flags = tag.prototype && tag.prototype.render
       ? VNodeFlags.COMPONENT_STATEFUL_NORMAL  // 有状态组件
       : VNodeFlags.COMPONENT_FUNCTIONAL       // 函数式组件

@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>hello</title>
+    </head>
+    <body>
+        <div id="app">
+        </div>
+    </body>
+</html>
+<script type="text/javascript">
+const VNodeFlags = {
+  // html 标签
+  ELEMENT_HTML: 1,
+  // SVG 标签C:\Users\Administrator\Desktop\astar\vue\index (2).html
+  ELEMENT_SVG: 1 << 1,
+
+  // 普通有状态组件
+  COMPONENT_STATEFUL_NORMAL: 1 << 2,
+  // 需要被keepAlive的有状态组件
+  COMPONENT_STATEFUL_SHOULD_KEEP_ALIVE: 1 << 3,
+  // 已经被keepAlive的有状态组件
+  COMPONENT_STATEFUL_KEPT_ALIVE: 1 << 4,
+  // 函数式组件
+  COMPONENT_FUNCTIONAL: 1 << 5,
+
+  // 纯文本
+  TEXT: 1 << 6,
+  // Fragment
+  FRAGMENT: 1 << 7,
+  // Portal
+  PORTAL: 1 << 8,
+}
+VNodeFlags.ELEMENT = VNodeFlags.ELEMENT_HTML | VNodeFlags.ELEMENT_SVG
+VNodeFlags.COMPONENT = VNodeFlags.COMPONENT_STATEFUL_NORMAL | VNodeFlags.COMPONENT_STATEFUL_SHOULD_KEEP_ALIVE | VNodeFlags.COMPONENT_STATEFUL_KEPT_ALIVE | VNodeFlags.COMPONENT_FUNCTIONAL
+VNodeFlags.COMPONENT_STATEFUL = VNodeFlags.COMPONENT_STATEFUL_NORMAL | VNodeFlags.COMPONENT_STATEFUL_SHOULD_KEEP_ALIVE | VNodeFlags.COMPONENT_STATEFUL_KEPT_ALIVE
+const ChildrenFlags = {
+  // 未知的 children 类型
+  UNKNOWN_CHILDREN: 0,
+  // 没有 children
+  NO_CHILDREN: 1,
+  // children 是单个 VNode
+  SINGLE_VNODE: 1 << 1,
+
+  // children 是多个拥有 key 的 VNode
+  KEYED_VNODES: 1 << 2,
+  // children 是多个没有 key 的 VNode
+  NONE_KEYED_VNODES: 1 << 3
+}
+ChildrenFlags.MULTIPLE_VNODES = ChildrenFlags.KEYED_VNODES | ChildrenFlags.NONE_KEYED_VNODES
+
+const Fragment = Symbol()
+const Portal = Symbol()
+const normalizeVNodes = function (children) {
+  const newChildren = []
+  // 遍历 children
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i]
+    if (child.key == null) {
+      // 如果原来的 VNode 没有key，则使用竖线(|)与该VNode在数组中的索引拼接而成的字符串作为key
+      child.key = '|' + i
+    }
+    newChildren.push(child)
+  }
+  // 返回新的children，此时 children 的类型就是 ChildrenFlags.KEYED_VNODES
+  return newChildren
+}
+const createTextVNode = function (text) {
+    return {
+        _isVNode: true,
+        flags: VNodeFlags.TEXT,
+        tag: null,
+        data: null,
+        children: text,
+        childFlags: ChildrenFlags.SINGLE_VNODE,
+        el: null
+    }
+}
+const h = function (tag, data = null, children = null) {
+    let flags = null
+    if (typeof tag === 'string') {
+        flags = tag === 'svg' ? VNodeFlags.ELEMENT_SVG : VNodeFlags.ELEMENT_HTML
+    } else if (tag === Fragment) {
+        flags = VNodeFlags.FRAGMENT
+    } else if (tag === Portal) {
+        flags = VNodeFlags.PORTAL
+        tag = data && data.target
+    } else {
+        if (tag !== null && typeof tag === 'object') {
+            flags = tag.functional
+                ? VNodeFlags.COMPONENT_FUNCTIONAL
+                : VNodeFlags.COMPONENT_STATEFUL_NORMAL
+        } else if (typeof tag === 'function') {
+            flags = tag.prototype && tag.prototype.render
+                ? VNodeFlags.COMPONENT_STATEFUL_NORMAL  // 有状态组件
+                : VNodeFlags.COMPONENT_FUNCTIONAL       // 函数式组件
+        }
+    }
+
+    // 确定childFlags
+    let childFlags = null
+    if (Array.isArray(children)) {
+        const { length } = children
+        if (length === 0) {
+            childFlags = ChildrenFlags.NO_CHILDREN
+        } else if (length === 1) {
+            childFlags = ChildrenFlags.SINGLE_VNODE
+            children = children[0]
+        } else {
+            childFlags = ChildrenFlags.KEYED_VNODES
+            children = normalizeVNodes(children) // 生成key
+        }
+    } else if (children === null) {
+        childFlags = ChildrenFlags.NO_CHILDREN
+    } else if (children._isVNode) {
+        childFlags = ChildrenFlags.SINGLE_VNODE
+    } else {
+        // 其他情况都作为文本节点处理，即单个子节点，会调用 createTextVNode 创建纯文本类型的 VNode
+        childFlags = ChildrenFlags.SINGLE_VNODE
+        children = createTextVNode(children + '')
+    }
+
+    return {
+        flags,
+        childFlags,
+        _isVNode: true,
+        children,
+        tag,
+        data,
+        el: null
+    }
+}
+const serialization = function (args) {
+    let res = ''
+    for (let item of args) {
+        if (typeof item === 'string') {
+            res += item
+        } else if (Array.isArray(item)) {
+            res += (' ' + item.join(' '))
+        } else {
+            for (let key in item) {
+                if (item[key]) {
+                    res += (' ' + key)
+                }
+            }
+        }
+    }
+    return res
+}
+const mountElement = function (vnode, container, isSVG) {
+    const { childFlags, children, data } = vnode
+    const el = document.createElement(vnode.tag)
+    for (let key in data) {
+        switch (key) {
+            case 'style':
+                for (let k in data.style) {
+                    el.style[k] = data.style[k]
+                }
+                break
+            case 'class':
+                el.className = serialization(data.class)
+                break
+            default:
+                const domPropsRE = /\[A-Z]|^(?:value|checked|selected|muted)$/
+                if (key[0] === 'o' && key[1] === 'n') {
+                    // 事件
+                    el.addEventListener(key.slice(2).toLowerCase(), data[key])
+                } else if (domPropsRE.test(key)) {
+                    // 当作 DOM Prop 处理
+                    el[key] = data[key]
+                } else {
+                    // 当作 Attr 处理
+                    el.setAttribute(key, data[key])
+                }
+                break
+        }
+    }
+    // children
+    if (childFlags !== ChildrenFlags.NO_CHILDREN) {
+        if (childFlags & ChildrenFlags.SINGLE_VNODE) {
+            mount(children, el, isSVG)
+        } else if (childFlags & ChildrenFlags.MULTIPLE_VNODES) {
+            for (let i = 0; i < children.length; i++) {
+                mount(children[i], el, isSVG)
+            }
+        }
+    }
+
+    vnode.el = el
+    container.appendChild(el)
+}
+const mountStatefulComponent = function (vnode, container, isSVG) {
+  // 创建组件实例
+  const instance = new vnode.tag()
+  // 渲染vnode
+  instance.$vnode = instance.render(h)
+  // 挂载
+  mount(instance.$vnode, container, isSVG)
+  // el 属性值 和 组件实例的 $el 属性都引用组件的根DOM元素
+  instance.$el = vnode.el = instance.$vnode.el
+}
+
+const mountFunctionalComponent = function (vnode, container, isSVG) {
+    const $vnode = vnode.tag()
+    mount($vnode, container, isSVG)
+    vnode.el = $vnode.el
+}
+
+const mountComponent = function (vnode, container, isSVG) {
+  if (vnode.flags & VNodeFlags.COMPONENT_STATEFUL) {
+    mountStatefulComponent(vnode, container, isSVG)
+  } else {
+    mountFunctionalComponent(vnode, container, isSVG)
+  }
+}
+
+const mountText = function (vnode, container) {
+    const el = document.createTextNode(vnode.children)
+    vnode.el = el
+    container.appendChild(el)
+}
+
+const mountFragment = function (vnode, container, isSVG) {
+    const { children, childFlags } = vnode
+    if (childFlags !== ChildrenFlags.NO_CHILDREN) {
+        if (childFlags & ChildrenFlags.SINGLE_VNODE) {
+            mount(children, container, isSVG)
+            vnode.el = children.el
+        } else if (childFlags & ChildrenFlags.MULTIPLE_VNODES) {
+            for (let i = 0; i < children.length; i++) {
+                mount(children[i], container, isSVG)
+            }
+            vnode.el = children[0].el
+        }
+    } else {
+        // 创建空文本节点占位
+        let placeholder = createTextVNode('')
+        mountText(placeholder, container)
+        vnode.el = placeholder.el
+    }
+}
+
+const mountPortal = function (vnode, container, isSVG) {
+  const { tag, children, childFlags } = vnode
+  // 获取挂载点
+  const target = typeof tag === 'string' ? document.querySelector(tag) : tag
+  if (childFlags & ChildrenFlags.SINGLE_VNODE) {
+    // 将 children 挂载到 target 上，而非 container
+    mount(children, target, isSVG)
+  } else if (childFlags & ChildrenFlags.MULTIPLE_VNODES) {
+    for (let i = 0; i < children.length; i++) {
+      // 将 children 挂载到 target 上，而非 container
+      mount(children[i], target, isSVG)
+    }
+  }
+
+  // 占位的空文本节点
+  const placeholder = createTextVNode('')
+  // 将该节点挂载到 container 中
+  mountText(placeholder, container, null)
+  // el 属性引用该节点
+  vnode.el = placeholder.el
+}
+
+var mount = function (vnode, container, isSVG) {
+    // 判断vnode的flag
+    if (vnode.flags & VNodeFlags.ELEMENT) {
+        mountElement(vnode, container, isSVG) // 挂载普通标签
+    } else if (vnode.flags & VNodeFlags.COMPONENT) {
+        mountComponent(vnode, container, isSVG) // 挂载组件
+    } else if (vnode.flags & VNodeFlags.TEXT) {
+        mountText(vnode, container) // 挂载纯文本
+    } else if (vnode.flags & VNodeFlags.FRAGMENT) {
+        mountFragment(vnode, container, isSVG) // 挂载Fragment
+    } else if (vnode.flags & VNodeFlags.PORTAL) {
+        mountPortal(vnode, container, isSVG) // 挂载Portal
+    }
+}
+const patch = function (preVNode, vnode, container) {
+    console.log(preVNode, vnode, container)
+}
+const render = function (vnode, container) {
+    const preVNode = container.vnode
+    if (!preVNode) {
+        if (vnode) {
+            let isSVG = vnode.flags & VNodeFlags.ELEMENT_SVG
+            mount(vnode, container, isSVG)
+            container.vnode = vnode
+        }
+    } else {
+        if (vnode) {
+            patch(preVNode, vnode, container)
+            container.vnode = vnode
+        } else {
+            container.removeChild(preVNode.el)
+            container.vnode = null
+        }
+    }
+}
+
+class MyComponent {
+    render () {
+        return h('div',
+            {
+                style: {
+                    background: 'green'
+                }
+            },
+            [
+                h('span', null, '我是组件的标题1......'),
+                h('span', null, '我是组件的标题2......')
+            ]
+        )
+    }
+}
+function MyFunctionalComponent() {
+  // 返回要渲染的内容描述，即 VNode
+  return h(
+    'div',
+    {
+      style: {
+        background: 'red'
+      }
+    },
+    [
+      h('span', null, '我是组件的标题1......'),
+      h('span', null, '我是组件的标题2......')
+    ]
+  )
+}
+const dynamicClass1 = { 'a': true, 'b': false }
+const dynamicClass2 = [ 'c', 'd' ]
+const vnode = h('div', { style: { color: 'red' }, class: ['test', dynamicClass1], onClick: function () { console.log('click me') } }, [h('div', null, [h('span', null, 'kkk'), h(Fragment, null, null)])])
+
+render(vnode, document.getElementById('app'))
+setTimeout(() => {
+    render(null, document.getElementById('app'))
+}, 1000)
+
+</script>
