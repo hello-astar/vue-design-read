@@ -2,9 +2,9 @@
  * @Author: astar
  * @Date: 2021-05-19 18:14:57
  * @LastEditors: astar
- * @LastEditTime: 2021-05-24 14:30:57
+ * @LastEditTime: 2021-05-25 20:18:09
  * @Description: 文件描述
- * @FilePath: \vue\packages\createVNode.js
+ * @FilePath: \vue\packages\h.js
  */
 import { VNodeFlags, ChildrenFlags, Fragment, Portal } from '../config/consts.js'
 

@@ -192,19 +192,46 @@ const mountElement = function (vnode, container, isSVG) {
 }
 const mountStatefulComponent = function (vnode, container, isSVG) {
   // 创建组件实例
-  const instance = new vnode.tag()
-  // 渲染vnode
-  instance.$vnode = instance.render(h)
-  // 挂载
-  mount(instance.$vnode, container, isSVG)
-  // el 属性值 和 组件实例的 $el 属性都引用组件的根DOM元素
-  instance.$el = vnode.el = instance.$vnode.el
+  const instance = (vnode.children = new vnode.tag())
+  instance.$props = vnode.data
+  instance._update = function () {
+    // 如果 instance._mounted 为真，说明组件已挂载，应该执行更新操作
+    if (instance._mounted) {
+      // 1、拿到旧的 VNode
+      const prevVNode = instance.$vnode
+      // 2、重渲染新的 VNode
+      const nextVNode = (instance.$vnode = instance.render())
+      // 3、patch 更新
+      patch(prevVNode, nextVNode, prevVNode.el.parentNode)
+      // 4、更新 vnode.el 和 $el
+      instance.$el = vnode.el = instance.$vnode.el
+    } else {
+      // 1、渲染VNode
+      instance.$vnode = instance.render()
+      // 2、挂载
+      mount(instance.$vnode, container, isSVG)
+      // 3、组件已挂载的标识
+      instance._mounted = true
+      // 4、el 属性值 和 组件实例的 $el 属性都引用组件的根DOM元素
+      instance.$el = vnode.el = instance.$vnode.el
+      // 5、调用 mounted 钩子
+      instance.mounted && instance.mounted()
+    }
+  }
+
+  instance._update()
+
 }
 
 const mountFunctionalComponent = function (vnode, container, isSVG) {
-    const $vnode = vnode.tag()
-    mount($vnode, container, isSVG)
-    vnode.el = $vnode.el
+  // 获取 props
+  const props = vnode.data
+  // 获取 VNode
+  const $vnode = (vnode.children = vnode.tag(props))
+  // 挂载
+  mount($vnode, container, isSVG)
+  // el 元素引用该组件的根元素
+  vnode.el = $vnode.el
 }
 
 const mountComponent = function (vnode, container, isSVG) {
@@ -283,11 +310,181 @@ var mount = function (vnode, container, isSVG) {
 
 const replaceVNode = function (prevVNode, nextVNode, container) {
     container.removeChild(prevVNode.el)
+    // 如果将要被移除的 VNode 类型是组件，则需要调用该组件实例的 unmounted 钩子函数
+    if (prevVNode.flags & VNodeFlags.COMPONENT_STATEFUL_NORMAL) {
+      // 类型为有状态组件的 VNode，其 children 属性被用来存储组件实例对象
+      const instance = prevVNode.children
+      instance.unmounted && instance.unmounted()
+    }
     mount(nextVNode, container)
 }
 
+const patchData = function (el, key, prevValue, nextValue, isSVG) {
+  switch (key) {
+    case 'style':
+      for (let k in nextValue) {
+        el.style[k] = nextValue[k]
+      }
+      for (let k in prevValue) {
+        if (!nextValue || !nextValue.hasOwnProperty(k)) {
+          el.style[k] = ''
+        }
+      }
+      break
+    case 'class':
+      if (nextValue) {
+        if (isSVG) {
+          el.setAttribute('class', serialization(nextValue))
+        } else {
+          el.className = serialization(nextValue)
+        }
+      }
+      break
+    default:
+      const domPropsRE = /\[A-Z]|^(?:value|checked|selected|muted)$/
+      if (key[0] === 'o' && key[1] === 'n') {
+        // 事件
+        // 移除旧事件
+        if (prevValue) {
+          el.removeEventListener(key.slice(2), prevValue)
+        }
+        // 添加新事件
+        if (nextValue) {
+          el.addEventListener(key.slice(2), nextValue)
+        }
+      } else if (domPropsRE.test(key)) {
+        // 当作 DOM Prop 处理
+        el[key] = nextValue
+      } else {
+        // 当作 Attr 处理
+        el.setAttribute(key, nextValue)
+      }
+      break
+  }
+}
+
+// 3 * 3 = 9种情况
+const patchChildren = function (prevChildFlags, nextChildFlags, prevChildren, nextChildren, container) {
+  switch (prevChildFlags) {
+    case ChildrenFlags.SINGLE_VNODE:
+      switch (nextChildFlags) {
+        case ChildrenFlags.SINGLE_VNODE:
+          patch(prevChildren, nextChildren, container)
+          break
+        case ChildrenFlags.NO_CHILDREN:
+          container.removeChild(prevChildren.el)
+          break
+        default:
+          container.removeChild(prevChildren.el)
+          for (let i = 0; i < nextChildren.length; i++) {
+            mount(nextChildren[i], container)
+          }
+          break
+      }
+      break
+    case ChildrenFlags.NO_CHILDREN:
+      switch (nextChildFlags) {
+        case ChildrenFlags.SINGLE_VNODE:
+          mount(nextChildren, container)
+          break
+        case ChildrenFlags.NO_CHILDREN:
+          break
+        default:
+          for (let i = 0; i < nextChildren.length; i++) {
+            mount(nextChildren[i], container)
+          }
+          break
+      }
+      break
+    default:
+      switch (nextChildFlags) {
+        case ChildrenFlags.SINGLE_VNODE:
+          for(let i = 0; i < prevChildren.length; i++) {
+            container.removeChild(prevChildren[i].el)
+          }
+          mount(nextChildren, container)
+          break
+        case ChildrenFlags.NO_CHILDREN:
+          for(let i = 0; i < prevChildren.length; i++) {
+            container.removeChild(prevChildren[i].el)
+          }
+          break
+        default:
+          // 遍历旧的子节点，将其全部移除
+          for (let i = 0; i < prevChildren.length; i++) {
+            container.removeChild(prevChildren[i].el)
+          }
+          // 遍历新的子节点，将其全部添加
+          for (let i = 0; i < nextChildren.length; i++) {
+            mount(nextChildren[i], container)
+          }
+          break
+      }
+      break
+  }
+}
+
 const patchElement = function (prevVNode, nextVNode, container) {
-    console.log('hhhhhhhhhhh')
+  if (prevVNode.tag !== nextVNode.tag) {
+    replaceVNode(prevVNode, nextVNode, container)
+    return
+  }
+  // 拿到 el 元素，注意这时要让 nextVNode.el 也引用该元素
+  const el = (nextVNode.el = prevVNode.el)
+  // 拿到 新旧 VNodeData
+  const prevData = prevVNode.data
+  const nextData = nextVNode.data
+  // 新的 VNodeData 存在时才有必要更新
+  if (nextData) {
+    // 遍历新的 VNodeData
+    for (let key in nextData) {
+      // 根据 key 拿到新旧 VNodeData 值
+      const prevValue = prevData[key]
+      const nextValue = nextData[key]
+      patchData(el, key, prevValue, nextValue)
+    }
+  }
+  if (prevData) {
+    // 遍历旧的 VNodeData，将已经不存在于新的 VNodeData 中的数据移除
+    for (let key in prevData) {
+      const prevValue = prevData[key]
+      if (prevValue && (!nextData || !nextData.hasOwnProperty(key))) {
+        // 第四个参数为 null，代表移除数据
+        patchData(el, key, prevValue, null)
+      }
+    }
+  }
+
+  // 调用 patchChildren 函数递归地更新子节点
+  patchChildren(
+    prevVNode.childFlags, // 旧的 VNode 子节点的类型
+    nextVNode.childFlags, // 新的 VNode 子节点的类型
+    prevVNode.children,   // 旧的 VNode 子节点
+    nextVNode.children,   // 新的 VNode 子节点
+    el                    // 当前标签元素，即这些子节点的父节点
+  )
+}
+
+const patchText = function (prevVNode, nextVNode) {
+    const el = (nextVNode.el = prevVNode.el)
+    if (nextVNode.children !== prevVNode.children) {
+        el.nodeValue = nextVNode.children
+    }
+}
+
+const patchComponent = function (prevVNode, nextVNode, container) {
+  if (nextVNode.tag !== prevVNode.tag) {
+    replaceVNode(prevVNode, nextVNode, container)
+  } else if (nextVNode.flags & VNodeFlags.COMPONENT_STATEFUL_NORMAL) {
+      // 1、获取组件实例
+      const instance = (nextVNode.children = prevVNode.children)
+      // 2、更新 props
+      instance.$props = nextVNode.data
+      // 3、更新组件
+      instance._update()
+  } else {
+    console.log('hehe')
+  }
 }
 
 const patch = function (prevVNode, nextVNode, container) {
@@ -300,7 +497,7 @@ const patch = function (prevVNode, nextVNode, container) {
     } else if (nextFlags & VNodeFlags.COMPONENT) {
         patchComponent(prevVNode, nextVNode, container)
     } else if (nextFlags & VNodeFlags.TEXT) {
-        patchText(prevVNode, nextVNode, container)
+        patchText(prevVNode, nextVNode)
     } else if (nextFlags & VNodeFlags.FRAGMENT) {
         patchFragment(prevVNode, nextVNode, container)
     } else if (nextFlags & VNodeFlags.PORTAL) {
@@ -326,22 +523,41 @@ const render = function (vnode, container) {
     }
 }
 
-class MyComponent {
+class ParentComponent {
+    localMsg = 'from parent'
+    isTrust = false
+
+    mounted () {
+      setTimeout(() => {
+        this.localMsg = '2s after'
+        this.isTrust = true
+        this._update()
+      }, 2000);
+    }
     render () {
-        return h('div',
-            {
-                style: {
-                    background: 'green'
-                }
-            },
-            [
-                h('span', null, '我是组件的标题1......'),
-                h('span', null, '我是组件的标题2......')
-            ]
-        )
+        const text = this.localMsg
+        return h(MyFunctionalComponent, { text: this.localMsg })
     }
 }
-function MyFunctionalComponent() {
+class ChildComponent1 {
+  render () {
+    return h('div', null, this.$props.text)
+  }
+}
+
+class ChildComponent2 {
+  render () {
+    return h('div', null, '222222222')
+  }
+}
+
+function MyParent (props) {
+  return h(
+    MyFunctionalComponent,
+    { text: props.text }
+  )
+}
+function MyFunctionalComponent(props) {
   // 返回要渲染的内容描述，即 VNode
   return h(
     'div',
@@ -350,19 +566,13 @@ function MyFunctionalComponent() {
         background: 'red'
       }
     },
-    [
-      h('span', null, '我是组件的标题1......'),
-      h('span', null, '我是组件的标题2......')
-    ]
+    props.text
   )
 }
-const dynamicClass1 = { 'a': true, 'b': false }
-const dynamicClass2 = [ 'c', 'd' ]
-const vnode = h('div', { style: { color: 'red' }, class: ['test', dynamicClass1], onClick: function () { console.log('click me') } }, [h('div', null, [h('span', null, 'kkk'), h(Fragment, null, null)])])
+
+const vnode = h(ParentComponent, { text: '函数式组件' }, null)
 
 render(vnode, document.getElementById('app'))
-setTimeout(() => {
-    render(h('div', null, [h(MyFunctionalComponent, null, null), h(MyComponent, null, null)]), document.getElementById('app'))
-}, 1000)
+
 
 </script>
