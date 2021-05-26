@@ -256,7 +256,7 @@ const patchPortal = function (prevVNode, nextVNode, container) {
   }
 }
 
-export default function (prevVNode, nextVNode, container) {
+function patch (prevVNode, nextVNode, container) {
   const nextFlags = nextVNode.flags
   const prevFlags = prevVNode.flags
   if (prevFlags !== nextFlags) { // flags不同，无需对比直接替换
@@ -273,3 +273,5 @@ export default function (prevVNode, nextVNode, container) {
       patchPortal(prevVNode, nextVNode, container)
   }
 }
+
+export default patch
