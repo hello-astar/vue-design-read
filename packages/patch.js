@@ -1,5 +1,5 @@
 import mount from "./mount"
-import { VNodeFlags, domPropsRE } from '../config/consts.js'
+import { VNodeFlags, ChildrenFlags ,domPropsRE } from '../config/consts.js'
 
 // 处理展开class
 const serialization = function (args = []) {
