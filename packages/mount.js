@@ -2,7 +2,7 @@ import { VNodeFlags, ChildrenFlags } from '../config/consts.js'
 import { createTextVNode } from './h.js'
 import patch, { patchData } from './patch.js'
 
-const mountElement = function (vnode, container, isSVG) {
+const mountElement = function (vnode, container, isSVG, refNode) {
   const { tag, data, children, childFlags, flags } = vnode
   isSVG = isSVG || flags & VNodeFlags.ELEMENT_SVG
   const el = isSVG ? document.createElementNS('http://www.w3.org/2000/svg', tag) : document.createElement(tag)
@@ -23,7 +23,7 @@ const mountElement = function (vnode, container, isSVG) {
     }
   }
 
-  container.appendChild(el)
+  refNode ? container.insertBefore(el, refNode) : container.appendChild(el)
 }
 
 const mountText = function (vnode, container) {
@@ -151,10 +151,10 @@ const mountComponent = function (vnode, container, isSVG) {
   }
 }
 
-const mount = function (vnode, container, isSVG) {
+const mount = function (vnode, container, isSVG, refNode) {
   const { flags } = vnode
   if (flags & VNodeFlags.ELEMENT) {
-    mountElement(vnode, container, isSVG)
+    mountElement(vnode, container, isSVG, refNode)
   } else if (flags & VNodeFlags.COMPONENT) {
     mountComponent(vnode, container, isSVG)
   } else if (flags & VNodeFlags.TEXT) {

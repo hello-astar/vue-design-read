@@ -2,7 +2,7 @@
  * @Author: astar
  * @Date: 2021-05-19 18:14:57
  * @LastEditors: astar
- * @LastEditTime: 2021-05-25 20:18:09
+ * @LastEditTime: 2021-05-27 22:44:45
  * @Description: 文件描述
  * @FilePath: \vue\packages\h.js
  */
@@ -84,6 +84,7 @@ export const h = function (tag, data, children) {
     childFlags,
     tag,
     data,
-    children
+    children,
+    key: data && data.key ? data.key : null
   }
 }

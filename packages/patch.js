@@ -121,13 +121,59 @@ const patchChildren = function (prevChildFlags, nextChildFlags, prevChildren, ne
           }
           break
         default:
-          // 遍历旧的子节点，将其全部移除
-          for (let i = 0; i < prevChildren.length; i++) {
-            container.removeChild(prevChildren[i].el)
-          }
-          // 遍历新的子节点，将其全部添加
+          // 用来存储寻找过程中遇到的最大索引值
+          let lastIndex = 0
+          // 遍历新的 children
           for (let i = 0; i < nextChildren.length; i++) {
-            mount(nextChildren[i], container)
+            const nextVNode = nextChildren[i]
+            // 遍历旧的 children
+            let find = false
+            let j = 0
+            for (; j < prevChildren.length; j++) {
+              const prevVNode = prevChildren[j]
+              // 如果找到了具有相同 key 值的两个节点，则调用 `patch` 函数更新之
+              if (nextVNode.key === prevVNode.key) {
+                find = true
+                patch(prevVNode, nextVNode, container)
+                if (j < lastIndex) {
+                  // 需要移动
+                  // refNode 是为了下面调用 insertBefore 函数准备的
+                  const refNode = nextChildren[i - 1].el.nextSibling
+                  // 调用 insertBefore 函数移动 DOM
+                  container.insertBefore(prevVNode.el, refNode)
+                } else {
+                  // 更新 lastIndex
+                  lastIndex = j
+                }
+                break // 这里需要 break
+              }
+            }
+            // 找不到相同的key
+            if (!find) {
+              // 这种办法还是会多移动数据例如1,2,3 => 6,1,2,3将6插入到最后面，导致1,2,3节点需要依次移动到6后面
+              // mount(nextVNode, container, nextVNode.flag & VNodeFlags.ELEMENT_SVG)
+              // lastIndex = j
+              // 所以还是直接把6插入到第一位吧
+              const refNode =
+                i - 1 < 0
+                  ? prevChildren[0].el
+                  : nextChildren[i - 1].el.nextSibling
+              mount(nextVNode, container, nextVNode.flag & VNodeFlags.ELEMENT_SVG, refNode)
+            }
+          }
+
+          // 移除已经不存在的节点
+          // 遍历旧的节点
+          for (let i = 0; i < prevChildren.length; i++) {
+            const prevVNode = prevChildren[i]
+            // 拿着旧 VNode 去新 children 中寻找相同的节点
+            const has = nextChildren.find(
+              nextVNode => nextVNode.key === prevVNode.key
+            )
+            if (!has) {
+              // 如果没有找到相同的节点，则移除
+              container.removeChild(prevVNode.el)
+            }
           }
           break
       }
