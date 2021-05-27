@@ -2,12 +2,14 @@
  * @Author: astar
  * @Date: 2021-05-26 19:57:19
  * @LastEditors: astar
- * @LastEditTime: 2021-05-26 20:10:37
+ * @LastEditTime: 2021-05-27 15:05:33
  * @Description: 文件描述
  * @FilePath: \vue\test.js
  */
 import { render } from './packages/render.js'
 import { h } from './packages/h.js'
+
+let template = `<div>{{test}}</div>`
 
 let activeUpdate = null
   class MVVM {
@@ -39,29 +41,49 @@ let activeUpdate = null
     }
 
     // 解析DOM，生成VNODE
+    // 目前只能解析一行。。
     compile (el) {
-      let reg = /\{\{(.*)\}\}/
-      let children = el.childNodes
-      if (!children.length) return
-      for (let i = 0; i < children.length; i++) {
-        let child = children[i]
-        let nodeType = child.nodeType
-        if (nodeType === 3 && child.textContent) { // 普通文本
-          if (reg.test(child.textContent)) {
-            const _this = this
-            let key = RegExp.$1
-            activeUpdate = function () {
-              if (key in _this) {
-                child.textContent = _this[key]
-              }
-            }
-            activeUpdate()
-            activeUpdate = null
+      // let reg = /\{\{(.*)\}\}/ // 简单匹配{{test}}式子，获取绑定的data
+      let tagNameReg = /^\<(.*)\>\{\{(.*)\}\}\<\/(.*)\>/ // 简单匹配tagname
+      if (tagNameReg.test(template)) {
+        const _this = this
+        let key = RegExp.$2
+        let tagName = RegExp.$1
+        activeUpdate = function () {
+        if (key in _this) {
+            render(h(tagName, null, _this[key]), el)
           }
-        } else {
-          this.compile(child)
         }
+        activeUpdate()
+        activeUpdate = null
       }
+      // console.log(tagNameReg.test(template))
+      // let children = el.childNodes
+      // if (!children.length) return
+      // for (let i = 0; i < children.length; i++) {
+      //   let child = children[i]
+      //   let nodeType = child.nodeType
+      //   if (nodeType === 3 && child.textContent) { // 普通文本
+      //     if (reg.test(child.textContent)) {
+      //       const _this = this
+      //       let key = RegExp.$1
+      //       activeUpdate = function () {
+      //         if (key in _this) {
+      //           console.log(el)
+      //           const vnode = h(null, null, _this[key])
+      //           console.log(vnode)
+      //           render(vnode, el)
+      //           // child.textContent = _this[key]
+      //         }
+      //       }
+      //       activeUpdate()
+      //       activeUpdate = null
+      //     }
+      //   } else {
+      //     // render(h(child.tagName.toLowerCase()))
+      //     this.compile(child)
+      //   }
+      // }
     }
   }
 
@@ -81,27 +103,15 @@ let activeUpdate = null
     }
   }
 
-  // let mvvm = new MVVM({
-  //   el: '#app',
-  //   data: function () {
-  //     return {
-  //       test: 'hahah',
-  //       hello: '??'
-  //     }
-  //   }
-  // })
-  // setTimeout(() => {
-  //   mvvm.test = 'jjjj'
-  // }, 1000)
-
-  // 渲染页面
-  // const { h, render } = Vue
-
-  const vnode = h('div', null, [h('span', null, '哈哈哈'), h('div', null, 'kk')])
-  render(vnode, document.getElementById('app'))
-
-  console.log(document.getElementById('app').vnode)
-
+  let mvvm = new MVVM({
+    el: '#app',
+    data: function () {
+      return {
+        test: 'hahah',
+        hello: '??'
+      }
+    }
+  })
   setTimeout(() => {
-      render(h('div', { class: ['test'] }, h('span', null, '呵呵')), document.getElementById('app'))
+    mvvm.test = 'jjjj'
   }, 1000)
