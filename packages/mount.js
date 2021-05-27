@@ -1,6 +1,6 @@
 import { VNodeFlags, ChildrenFlags } from '../config/consts.js'
 import { createTextVNode } from './h.js'
-import { patchData } from './patch.js'
+import patch, { patchData } from './patch.js'
 
 const mountElement = function (vnode, container, isSVG) {
   const { tag, data, children, childFlags, flags } = vnode
@@ -75,7 +75,7 @@ const mountPortal = function (vnode, container, isSVG) {
 
 const mountStatefulComponent = function (vnode, container, isSVG) {
   // 创建组件实例
-  const instance = new vnode.tag()
+  const instance = (vnode.children = new vnode.tag())
   // 初始化 props
   instance.$props = vnode.data
   instance._update = function () {
@@ -107,7 +107,7 @@ const mountStatefulComponent = function (vnode, container, isSVG) {
 }
 
 const mountFunctionalComponent = function (vnode, container, isSVG) {
-    const $vnode = vnode.tag()
+    const $vnode = vnode.tag(vnode.data)
     mount($vnode, container, isSVG)
     vnode.el = $vnode.el
 }
