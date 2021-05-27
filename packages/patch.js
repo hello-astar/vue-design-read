@@ -187,7 +187,15 @@ const patchComponent = function (prevVNode, nextVNode, container) {
       // 3、更新组件
       instance._update()
   } else { // 函数式组件
-    console.log('hehe')
+    // 通过 prevVNode.handle 拿到 handle 对象
+    const handle = (nextVNode.handle = prevVNode.handle)
+    // 更新 handle 对象
+    handle.prev = prevVNode
+    handle.next = nextVNode
+    handle.container = container
+
+    // 调用 update 函数完成更新
+    handle.update()
   }
 }
 

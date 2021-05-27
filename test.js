@@ -2,14 +2,14 @@
  * @Author: astar
  * @Date: 2021-05-26 19:57:19
  * @LastEditors: astar
- * @LastEditTime: 2021-05-27 15:05:33
+ * @LastEditTime: 2021-05-27 16:42:39
  * @Description: 文件描述
  * @FilePath: \vue\test.js
  */
 import { render } from './packages/render.js'
 import { h } from './packages/h.js'
+import * as components from './component.js'
 
-let template = `<div>{{test}}</div>`
 
 let activeUpdate = null
   class MVVM {
@@ -45,13 +45,13 @@ let activeUpdate = null
     compile (el) {
       // let reg = /\{\{(.*)\}\}/ // 简单匹配{{test}}式子，获取绑定的data
       let tagNameReg = /^\<(.*)\>\{\{(.*)\}\}\<\/(.*)\>/ // 简单匹配tagname
-      if (tagNameReg.test(template)) {
+      if (tagNameReg.test(this.$options.template)) {
         const _this = this
         let key = RegExp.$2
         let tagName = RegExp.$1
         activeUpdate = function () {
         if (key in _this) {
-            render(h(tagName, null, _this[key]), el)
+            render(h(components[tagName], { msg: _this[key] }, null), el)
           }
         }
         activeUpdate()
@@ -107,10 +107,10 @@ let activeUpdate = null
     el: '#app',
     data: function () {
       return {
-        test: 'hahah',
-        hello: '??'
+        test: 'hahah'
       }
-    }
+    },
+    template: `<Parent>{{test}}</Parent>` // 暂时把{{test}}作为props吧
   })
   setTimeout(() => {
     mvvm.test = 'jjjj'
