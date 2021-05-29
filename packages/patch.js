@@ -74,6 +74,181 @@ const replaceVNode = function (prevVNode, nextVNode, container) {
   mount(nextVNode, container)
 }
 
+// react的diff算法
+const diff1 = function (prevChildren, nextChildren, container) {
+  // 用来存储寻找过程中遇到的最大索引值
+  let lastIndex = 0
+  // 遍历新的 children
+  for (let i = 0; i < nextChildren.length; i++) {
+    const nextVNode = nextChildren[i]
+    // 遍历旧的 children
+    let find = false
+    let j = 0
+    for (; j < prevChildren.length; j++) {
+      const prevVNode = prevChildren[j]
+      // 如果找到了具有相同 key 值的两个节点，则调用 `patch` 函数更新之
+      if (nextVNode.key === prevVNode.key) {
+        find = true
+        patch(prevVNode, nextVNode, container)
+        if (j < lastIndex) {
+          // 需要移动
+          // refNode 是为了下面调用 insertBefore 函数准备的
+          const refNode = nextChildren[i - 1].el.nextSibling
+          // 调用 insertBefore 函数移动 DOM
+          container.insertBefore(prevVNode.el, refNode)
+        } else {
+          // 更新 lastIndex
+          lastIndex = j
+        }
+        break // 这里需要 break
+      }
+    }
+    // 找不到相同的key
+    if (!find) {
+      // 这种办法还是会多移动数据例如1,2,3 => 6,1,2,3将6插入到最后面，导致1,2,3节点需要依次移动到6后面
+      // mount(nextVNode, container, nextVNode.flag & VNodeFlags.ELEMENT_SVG)
+      // lastIndex = j
+      // 所以还是直接把6插入到第一位吧
+      const refNode =
+        i - 1 < 0
+          ? prevChildren[0].el
+          : nextChildren[i - 1].el.nextSibling
+      mount(nextVNode, container, nextVNode.flag & VNodeFlags.ELEMENT_SVG, refNode)
+    }
+  }
+
+  // 移除已经不存在的节点
+  // 遍历旧的节点
+  for (let i = 0; i < prevChildren.length; i++) {
+    const prevVNode = prevChildren[i]
+    // 拿着旧 VNode 去新 children 中寻找相同的节点
+    const has = nextChildren.find(
+      nextVNode => nextVNode.key === prevVNode.key
+    )
+    if (!has) {
+      // 如果没有找到相同的节点，则移除
+      container.removeChild(prevVNode.el)
+    }
+  }
+}
+// vue2的diff算法 -- 双端比较
+const diff2 = function (prevChildren, nextChildren, container) {
+  let oldStartIdx = 0
+  let oldEndIdx = prevChildren.length - 1
+  let newStartIdx = 0
+  let newEndIdx = nextChildren.length - 1
+  let oldStartVNode = prevChildren[oldStartIdx]
+  let oldEndVNode = prevChildren[oldEndIdx]
+  let newStartVNode = nextChildren[newStartIdx]
+  let newEndVNode = nextChildren[newEndIdx]
+  while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
+    if (!oldStartVNode) {
+      oldStartVNode = prevChildren[++oldStartIdx]
+    } else if (!oldEndVNode) {
+      oldEndVNode = prevChildren[--oldEndIdx]
+    } else if (oldStartVNode.key === newStartVNode.key) {
+      // 步骤一：oldStartVNode 和 newStartVNode 比对
+      patch(oldStartVNode, newStartVNode, container)
+      oldStartVNode = prevChildren[++oldStartIdx]
+      newStartVNode = nextChildren[++newStartIdx]
+    } else if (oldEndVNode.key === newEndVNode.key) {
+      // 步骤二：oldEndVNode 和 newEndVNode 比对
+      patch(oldEndVNode, newEndVNode, container)
+      oldEndVNode = prevChildren[--oldEndIdx]
+      newEndVNode = nextChildren[--newEndIdx]
+    } else if (oldStartVNode.key === newEndVNode.key) {
+      // 步骤三：oldStartVNode 和 newEndVNode 比对
+      patch(oldStartVNode, newEndVNode, container)
+      container.insertBefore(oldStartVNode.el, oldEndVNode.el.nextSibling)
+      oldStartVNode = prevChildren[++oldStartIdx]
+      newEndVNode = nextChildren[--newEndIdx]
+    } else if (oldEndVNode.key === newStartVNode.key) {
+      // 步骤四：oldEndVNode 和 newStartVNode 比对
+      // 先调用 patch 函数完成更新
+      patch(oldEndVNode, newStartVNode, container)
+      // 更新完成后，将容器中最后一个子节点移动到最前面，使其成为第一个子节点
+      container.insertBefore(oldEndVNode.el, oldStartVNode.el)
+      // 更新索引，指向下一个位置
+      oldEndVNode = prevChildren[--oldEndIdx]
+      newStartVNode = nextChildren[++newStartIdx]
+    } else {
+      // 非理想情况下
+      // 遍历旧 children，试图寻找与 newStartVNode 拥有相同 key 值的元素
+      const idxInOld = prevChildren.findIndex(
+        node => node && node.key === newStartVNode.key
+      )
+      if (idxInOld !== -1) {
+        patch(prevChildren[idxInOld], newStartVNode, container)
+        container.insertBefore(prevChildren[idxInOld].el, oldStartVNode.el)
+        prevChildren[idxInOld] = undefined
+      } else {
+        mount(newStartVNode, container, newStartVNode.flag & VNodeFlags.ELEMENT_SVG, oldStartVNode.el)
+      }
+      newStartVNode = nextChildren[++newStartIdx]
+    }
+  }
+  if (oldEndIdx < oldStartIdx) {
+    // 添加新节点
+    for (let i = newStartIdx; i <= newEndIdx; i++) {
+      mount(nextChildren[i], container, false, oldEndVNode.el.nextSibling)
+    }
+  } else if (newEndIdx < newStartIdx) {
+    // 移除操作
+    for (let i = oldStartIdx; i <= oldEndIdx; i++) {
+      container.removeChild(prevChildren[i].el)
+    }
+  }
+}
+// vue3的diff算法
+const diff3 = function (prevChildren, nextChildren, container) {
+  // 更新相同的前缀节点
+  // j 为指向新旧 children 中第一个节点的索引
+  let j = 0
+  let prevVNode = prevChildren[j]
+  let nextVNode = nextChildren[j]
+  // while 循环向后遍历，直到遇到拥有不同 key 值的节点为止
+  while (prevVNode && nextVNode && prevVNode.key === nextVNode.key) {
+    // 调用 patch 函数更新
+    patch(prevVNode, nextVNode, container)
+    j++
+    prevVNode = prevChildren[j]
+    nextVNode = nextChildren[j]
+  }
+  // 更新相同的后缀节点
+
+  // 指向旧 children 最后一个节点的索引
+  let prevEnd = prevChildren.length - 1
+  // 指向新 children 最后一个节点的索引
+  let nextEnd = nextChildren.length - 1
+
+  prevVNode = prevChildren[prevEnd]
+  nextVNode = nextChildren[nextEnd]
+
+  // while 循环向前遍历，直到遇到拥有不同 key 值的节点为止
+  while (prevVNode && nextVNode && prevVNode.key === nextVNode.key) {
+    // 调用 patch 函数更新
+    patch(prevVNode, nextVNode, container)
+    prevVNode = prevChildren[--prevEnd]
+    nextVNode = nextChildren[--nextEnd]
+  }
+
+  // 满足条件，则说明从 j -> nextEnd 之间的节点应作为新节点插入
+  if (j > prevEnd && j <= nextEnd) {
+    // 所有新节点应该插入到位于 nextPos 位置的节点的前面
+    const nextPos = nextEnd + 1
+    const refNode = nextPos < nextChildren.length ? nextChildren[nextPos].el : null
+    // 采用 while 循环，调用 mount 函数挂载节点
+    while (j <= nextEnd) {
+      mount(nextChildren[j++], container, false, refNode)
+    }
+  } else if (j > nextEnd) {
+    while (j <= prevEnd) {
+      container.removeChild(prevChildren[j++].el)
+    }
+  } else {
+    // diff2(prevChildren, nextChildren, container)
+  }
+}
 // 3 * 3 = 9种情况
 const patchChildren = function (prevChildFlags, nextChildFlags, prevChildren, nextChildren, container) {
   switch (prevChildFlags) {
@@ -121,129 +296,9 @@ const patchChildren = function (prevChildFlags, nextChildFlags, prevChildren, ne
           }
           break
         default:
-          // vue3 diff算法
-          // vue2 diff算法
-          // 双端比较
-          let oldStartIdx = 0
-          let oldEndIdx = prevChildren.length - 1
-          let newStartIdx = 0
-          let newEndIdx = nextChildren.length - 1
-          let oldStartVNode = prevChildren[oldStartIdx]
-          let oldEndVNode = prevChildren[oldEndIdx]
-          let newStartVNode = nextChildren[newStartIdx]
-          let newEndVNode = nextChildren[newEndIdx]
-          while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
-            if (!oldStartVNode) {
-              oldStartVNode = prevChildren[++oldStartIdx]
-            } else if (!oldEndVNode) {
-              oldEndVNode = prevChildren[--oldEndIdx]
-            } else if (oldStartVNode.key === newStartVNode.key) {
-              // 步骤一：oldStartVNode 和 newStartVNode 比对
-              patch(oldStartVNode, newStartVNode, container)
-              oldStartVNode = prevChildren[++oldStartIdx]
-              newStartVNode = nextChildren[++newStartIdx]
-            } else if (oldEndVNode.key === newEndVNode.key) {
-              // 步骤二：oldEndVNode 和 newEndVNode 比对
-              patch(oldEndVNode, newEndVNode, container)
-              oldEndVNode = prevChildren[--oldEndIdx]
-              newEndVNode = nextChildren[--newEndIdx]
-            } else if (oldStartVNode.key === newEndVNode.key) {
-              // 步骤三：oldStartVNode 和 newEndVNode 比对
-              patch(oldStartVNode, newEndVNode, container)
-              container.insertBefore(oldStartVNode.el, oldEndVNode.el.nextSibling)
-              oldStartVNode = prevChildren[++oldStartIdx]
-              newEndVNode = nextChildren[--newEndIdx]
-            } else if (oldEndVNode.key === newStartVNode.key) {
-              // 步骤四：oldEndVNode 和 newStartVNode 比对
-              // 先调用 patch 函数完成更新
-              patch(oldEndVNode, newStartVNode, container)
-              // 更新完成后，将容器中最后一个子节点移动到最前面，使其成为第一个子节点
-              container.insertBefore(oldEndVNode.el, oldStartVNode.el)
-              // 更新索引，指向下一个位置
-              oldEndVNode = prevChildren[--oldEndIdx]
-              newStartVNode = nextChildren[++newStartIdx]
-            } else {
-              // 非理想情况下
-              // 遍历旧 children，试图寻找与 newStartVNode 拥有相同 key 值的元素
-              const idxInOld = prevChildren.findIndex(
-                node => node && node.key === newStartVNode.key
-              )
-              if (idxInOld !== -1) {
-                patch(prevChildren[idxInOld], newStartVNode, container)
-                container.insertBefore(prevChildren[idxInOld].el, oldStartVNode.el)
-                prevChildren[idxInOld] = undefined
-              } else {
-                mount(newStartVNode, container, newStartVNode.flag & VNodeFlags.ELEMENT_SVG, oldStartVNode.el)
-              }
-              newStartVNode = nextChildren[++newStartIdx]
-            }
-          }
-          if (oldEndIdx < oldStartIdx) {
-            // 添加新节点
-            for (let i = newStartIdx; i <= newEndIdx; i++) {
-              mount(nextChildren[i], container, false, oldStartVNode.el)
-            }
-          } else if (newEndIdx < newStartIdx) {
-            // 移除操作
-            for (let i = oldStartIdx; i <= oldEndIdx; i++) {
-              container.removeChild(prevChildren[i].el)
-            }
-          }
-          // react diff算法
-          // // 用来存储寻找过程中遇到的最大索引值
-          // let lastIndex = 0
-          // // 遍历新的 children
-          // for (let i = 0; i < nextChildren.length; i++) {
-          //   const nextVNode = nextChildren[i]
-          //   // 遍历旧的 children
-          //   let find = false
-          //   let j = 0
-          //   for (; j < prevChildren.length; j++) {
-          //     const prevVNode = prevChildren[j]
-          //     // 如果找到了具有相同 key 值的两个节点，则调用 `patch` 函数更新之
-          //     if (nextVNode.key === prevVNode.key) {
-          //       find = true
-          //       patch(prevVNode, nextVNode, container)
-          //       if (j < lastIndex) {
-          //         // 需要移动
-          //         // refNode 是为了下面调用 insertBefore 函数准备的
-          //         const refNode = nextChildren[i - 1].el.nextSibling
-          //         // 调用 insertBefore 函数移动 DOM
-          //         container.insertBefore(prevVNode.el, refNode)
-          //       } else {
-          //         // 更新 lastIndex
-          //         lastIndex = j
-          //       }
-          //       break // 这里需要 break
-          //     }
-          //   }
-          //   // 找不到相同的key
-          //   if (!find) {
-          //     // 这种办法还是会多移动数据例如1,2,3 => 6,1,2,3将6插入到最后面，导致1,2,3节点需要依次移动到6后面
-          //     // mount(nextVNode, container, nextVNode.flag & VNodeFlags.ELEMENT_SVG)
-          //     // lastIndex = j
-          //     // 所以还是直接把6插入到第一位吧
-          //     const refNode =
-          //       i - 1 < 0
-          //         ? prevChildren[0].el
-          //         : nextChildren[i - 1].el.nextSibling
-          //     mount(nextVNode, container, nextVNode.flag & VNodeFlags.ELEMENT_SVG, refNode)
-          //   }
-          // }
-
-          // 移除已经不存在的节点
-          // 遍历旧的节点
-          // for (let i = 0; i < prevChildren.length; i++) {
-          //   const prevVNode = prevChildren[i]
-          //   // 拿着旧 VNode 去新 children 中寻找相同的节点
-          //   const has = nextChildren.find(
-          //     nextVNode => nextVNode.key === prevVNode.key
-          //   )
-          //   if (!has) {
-          //     // 如果没有找到相同的节点，则移除
-          //     container.removeChild(prevVNode.el)
-          //   }
-          // }
+          diff3(prevChildren, nextChildren, container)
+          // diff2(prevChildren, nextChildren, container)
+          // diff1(prevChildren, nextChildren, container)
           break
       }
       break
