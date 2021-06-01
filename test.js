@@ -2,7 +2,7 @@
  * @Author: astar
  * @Date: 2021-05-26 19:57:19
  * @LastEditors: astar
- * @LastEditTime: 2021-05-29 17:48:55
+ * @LastEditTime: 2021-06-01 16:55:43
  * @Description: 文件描述
  * @FilePath: \vue\test.js
  */
@@ -107,11 +107,11 @@ let activeUpdate = null
     el: '#app',
     data: function () {
       return {
-        test: [1,2,3]
+        test: [1,2,3,4]
       }
     },
     template: `<Parent>{{test}}</Parent>` // 暂时把{{test}}作为props吧
   })
   setTimeout(() => {
-    mvvm.test = [1,2,4]
+    mvvm.test = [1,4,2,3,5]
   }, 1000)

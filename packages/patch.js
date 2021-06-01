@@ -1,5 +1,6 @@
 import mount from "./mount"
 import { VNodeFlags, ChildrenFlags ,domPropsRE } from '../config/consts.js'
+import { lis } from '../utils/index.js'
 
 // 处理展开class
 const serialization = function (args = []) {
@@ -206,30 +207,38 @@ const diff3 = function (prevChildren, nextChildren, container) {
   let j = 0
   let prevVNode = prevChildren[j]
   let nextVNode = nextChildren[j]
-  // while 循环向后遍历，直到遇到拥有不同 key 值的节点为止
-  while (prevVNode && nextVNode && prevVNode.key === nextVNode.key) {
-    // 调用 patch 函数更新
-    patch(prevVNode, nextVNode, container)
-    j++
-    prevVNode = prevChildren[j]
-    nextVNode = nextChildren[j]
-  }
-  // 更新相同的后缀节点
-
   // 指向旧 children 最后一个节点的索引
   let prevEnd = prevChildren.length - 1
   // 指向新 children 最后一个节点的索引
   let nextEnd = nextChildren.length - 1
+  outer: {
+    // while 循环向后遍历，直到遇到拥有不同 key 值的节点为止
+    while (prevVNode && nextVNode && prevVNode.key === nextVNode.key) {
+      // 调用 patch 函数更新
+      patch(prevVNode, nextVNode, container)
+      j++
+      if (j > prevEnd || j > nextEnd) {
+        break outer
+      }
+      prevVNode = prevChildren[j]
+      nextVNode = nextChildren[j]
+    }
+    // 更新相同的后缀节点
+    prevVNode = prevChildren[prevEnd]
+    nextVNode = nextChildren[nextEnd]
 
-  prevVNode = prevChildren[prevEnd]
-  nextVNode = nextChildren[nextEnd]
-
-  // while 循环向前遍历，直到遇到拥有不同 key 值的节点为止
-  while (prevVNode && nextVNode && prevVNode.key === nextVNode.key) {
-    // 调用 patch 函数更新
-    patch(prevVNode, nextVNode, container)
-    prevVNode = prevChildren[--prevEnd]
-    nextVNode = nextChildren[--nextEnd]
+    // while 循环向前遍历，直到遇到拥有不同 key 值的节点为止
+    while (prevVNode && nextVNode && prevVNode.key === nextVNode.key) {
+      // 调用 patch 函数更新
+      patch(prevVNode, nextVNode, container)
+      prevEnd--
+      nextEnd--
+      if (j > prevEnd || j > nextEnd) {
+        break outer
+      }
+      prevVNode = prevChildren[prevEnd]
+      nextVNode = nextChildren[nextEnd]
+    }
   }
 
   // 满足条件，则说明从 j -> nextEnd 之间的节点应作为新节点插入
@@ -246,7 +255,54 @@ const diff3 = function (prevChildren, nextChildren, container) {
       container.removeChild(prevChildren[j++].el)
     }
   } else {
-    // diff2(prevChildren, nextChildren, container)
+    const nextLeft = nextEnd - j + 1
+    const source = [] // 记录新节点在旧节点位置
+    const prevstart = j
+    const nextStart = j
+    let moved = false
+    let pos = 0
+    let patched = 0
+    // 初始化source数组
+    for (let i = 0; i < nextLeft; i++) {
+      source.push(-1)
+    }
+    // 构建索引表
+    const keyIndex = {}
+    for(let i = nextStart; i <= nextEnd; i++) {
+      keyIndex[nextChildren[i].key] = i
+    }
+    for (let i = prevstart; i <= prevEnd; i++) {
+      const prevVNode = prevChildren[i]
+      // 通过索引表快速找到新 children 中具有相同 key 的节点的位置
+      const k = keyIndex[prevVNode.key]
+      if (patched < nextLeft) {
+        if (typeof k !== 'undefined') {
+          nextVNode = nextChildren[k]
+          // patch 更新
+          patch(prevVNode, nextVNode, container)
+          patched++
+          // 更新 source 数组
+          source[k - nextStart] = i
+          // 判断是否需要移动 // 相当于diff1的lastIndex
+          if (k < pos) {
+            moved = true
+          } else {
+            pos = k
+          }
+        } else {
+          // 没找到，删除该vnode
+          container.removeChild(prevVNode.el)
+        }
+      } else {
+        container.removeChild(prevVNode.el)
+      }
+    }
+    if (moved) {
+      // 如果 moved 为真，则需要进行 DOM 移动操作
+      // 计算最长递增子序列的index
+      const seq = lis(source)
+      console.log(source, seq)
+    }
   }
 }
 // 3 * 3 = 9种情况
