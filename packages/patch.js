@@ -301,10 +301,49 @@ const diff3 = function (prevChildren, nextChildren, container) {
       // 如果 moved 为真，则需要进行 DOM 移动操作
       // 计算最长递增子序列的index
       const seq = lis(source)
-      console.log(source, seq)
+      // j 指向最长递增子序列的最后一个值
+      let j = seq.length - 1
+      // 从后向前遍历新 children 中的剩余未处理节点
+      for (let i = nextLeft - 1; i >= 0; i--) {
+        if (source[i] === -1) {
+            // 作为全新的节点挂载
+            // 该节点在新 children 中的真实位置索引
+            const pos = i + nextStart
+            const nextVNode = nextChildren[pos]
+            // 该节点下一个节点的位置索引
+            const nextPos = pos + 1
+            // 挂载
+            mount(
+              nextVNode,
+              container,
+              false,
+              nextPos < nextChildren.length
+                ? nextChildren[nextPos].el
+                : null
+            )
+          } else if (i !== seq[j]) {
+            // 说明该节点需要移动
+            // 该节点在新 children 中的真实位置索引
+            const pos = i + nextStart
+            const nextVNode = nextChildren[pos]
+            // 该节点下一个节点的位置索引
+            const nextPos = pos + 1
+            // 移动
+            container.insertBefore(
+              nextVNode.el,
+              nextPos < nextChildren.length
+                ? nextChildren[nextPos].el
+                : null
+            )
+          } else {
+            // 当 i === seq[j] 时，说明该位置的节点不需要移动
+            // 并让 j 指向下一个位置
+            j--
+          }
+        }
+      }
     }
   }
-}
 // 3 * 3 = 9种情况
 const patchChildren = function (prevChildFlags, nextChildFlags, prevChildren, nextChildren, container) {
   switch (prevChildFlags) {

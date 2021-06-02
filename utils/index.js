@@ -35,7 +35,7 @@ export function lis (source) {
   let res = []
   while(i > 0 && j > 0) {
     if (application[i][j] === source[i - 1] && f[i][j]) {
-      res.unshift(source[i-1])
+      res.unshift(i-1)
       j--
     }
     i--
