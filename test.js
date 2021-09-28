@@ -2,7 +2,7 @@
  * @Author: astar
  * @Date: 2021-05-26 19:57:19
  * @LastEditors: astar
- * @LastEditTime: 2021-09-29 00:45:53
+ * @LastEditTime: 2021-09-29 02:26:01
  * @Description: 文件描述
  * @FilePath: \vue\test.js
  */
@@ -15,7 +15,8 @@ let activeUpdate = null
 class MVVM {
   constructor (options) {
     this.$options = options || {}
-    this._data = this.$options.data()
+    this._data = this.$options.data() // Object.defineProperty实现数据绑定需要有一个备份
+    this._methods = this.$options.methods // 存储函数
     this.$el = document.querySelector(options.el)
     // 数据劫持
     this.observe()
@@ -48,10 +49,10 @@ class MVVM {
     if (tagNameReg.test(this.$options.template)) {
       const _this = this
       let key = RegExp.$2
-      let tagName = RegExp.$1
+      let tagName = RegExp.$3
       activeUpdate = function () {
       if (key in _this) {
-          render(h(components[tagName], { msg: _this[key] }, null), el)
+          render(h(components[tagName] || tagName, { msg: _this[key], onclick: _this._methods.add.bind(_this) }, null), el)
         }
       }
       activeUpdate()
@@ -107,11 +108,16 @@ let mvvm = new MVVM({
   el: '#app',
   data: function () {
     return {
-      test: [1,2,3,4]
+      test: 1
     }
   },
-  template: `<Parent>{{test}}</Parent>` // 暂时把{{test}}作为props吧
+  methods: {
+    add (e) {
+      this.test++
+    }
+  },
+  template: `<Parent @click="add">{{test}}</Parent>` // 暂时把{{test}}作为props吧
 })
 setTimeout(() => {
-  mvvm.test = [1,4,2,3,5]
+  mvvm.test = 100
 }, 1000)

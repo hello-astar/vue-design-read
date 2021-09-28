@@ -2,7 +2,7 @@
  * @Author: astar
  * @Date: 2021-05-27 16:37:32
  * @LastEditors: astar
- * @LastEditTime: 2021-05-27 23:39:22
+ * @LastEditTime: 2021-09-29 02:23:48
  * @Description: 文件描述
  * @FilePath: \vue\component.js
 */
@@ -17,7 +17,8 @@ export function Child (props) {
 }
 
 export function Parent (props) {
-  return h(Child, { msg: props.msg }, null)
+  // return h(Child, { msg: props.msg }, null)
+  return h('div', props, props.msg)
 }
 
 // class Child {
