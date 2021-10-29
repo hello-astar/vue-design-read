@@ -2,12 +2,13 @@
  * @Author: astar
  * @Date: 2021-05-19 18:14:57
  * @LastEditors: astar
- * @LastEditTime: 2021-05-27 22:44:45
+ * @LastEditTime: 2021-10-08 14:41:41
  * @Description: 文件描述
  * @FilePath: \vue\packages\h.js
  */
 import { VNodeFlags, ChildrenFlags, Fragment, Portal } from '../config/consts.js'
 
+// 为vnode的children增加key
 const normalizeVNodes = function (children) {
   const newChildren = []
   // 遍历 children
@@ -43,16 +44,16 @@ export const h = function (tag, data, children) {
     flags = VNodeFlags.FRAGMENT
   } else if (tag === Portal) {
     flags === VNodeFlags.Portal
-    tag = data && data.target
+    tag = data && data.target // 将tag改为data.target的值
   } else {
     if (tag !== null && typeof tag === 'object') { // vue2
       flags = tag.functional
-      ? VNodeFlags.COMPONENT_FUNCTIONAL
-      : VNodeFlags.COMPONENT_STATEFUL_NORMAL
+        ? VNodeFlags.COMPONENT_FUNCTIONAL
+        : VNodeFlags.COMPONENT_STATEFUL_NORMAL
     } else if (typeof tag === 'function') { // vue3
       flags = tag.prototype && tag.prototype.render
-      ? VNodeFlags.COMPONENT_STATEFUL_NORMAL  // 有状态组件
-      : VNodeFlags.COMPONENT_FUNCTIONAL       // 函数式组件
+        ? VNodeFlags.COMPONENT_STATEFUL_NORMAL  // 有状态组件
+        : VNodeFlags.COMPONENT_FUNCTIONAL       // 函数式组件
     }
   }
 
@@ -60,22 +61,22 @@ export const h = function (tag, data, children) {
   if (Array.isArray(children)) {
     const { length } = children
     if (length === 0) {
-        childFlags = ChildrenFlags.NO_CHILDREN
+      childFlags = ChildrenFlags.NO_CHILDREN
     } else if (length === 1) {
-        childFlags = ChildrenFlags.SINGLE_VNODE
-        children = children[0]
+      childFlags = ChildrenFlags.SINGLE_VNODE
+      children = children[0]
     } else {
-        childFlags = ChildrenFlags.KEYED_VNODES
-        children = normalizeVNodes(children) // 生成key
+      childFlags = ChildrenFlags.KEYED_VNODES
+      children = normalizeVNodes(children) // 生成key
     }
   } else if (children === null) {
-      childFlags = ChildrenFlags.NO_CHILDREN
+    childFlags = ChildrenFlags.NO_CHILDREN
   } else if (children._isVNode) {
-      childFlags = ChildrenFlags.SINGLE_VNODE
+    childFlags = ChildrenFlags.SINGLE_VNODE
   } else {
-      // 其他情况都作为文本节点处理，即单个子节点，会调用 createTextVNode 创建纯文本类型的 VNode
-      childFlags = ChildrenFlags.SINGLE_VNODE
-      children = createTextVNode(children + '')
+    // 其他情况都作为文本节点处理，即单个子节点，会调用 createTextVNode 创建纯文本类型的 VNode
+    childFlags = ChildrenFlags.SINGLE_VNODE
+    children = createTextVNode(children + '')
   }
   return {
     _isVNode: true,

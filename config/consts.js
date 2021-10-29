@@ -2,7 +2,7 @@
  * @Author: astar
  * @Date: 2021-05-19 15:31:14
  * @LastEditors: astar
- * @LastEditTime: 2021-05-24 17:34:27
+ * @LastEditTime: 2021-10-03 22:21:29
  * @Description: 文件描述
  * @FilePath: \vue\config\consts.js
  */
@@ -10,7 +10,7 @@ const VNODEFLAGS = {
   // html 标签
   ELEMENT_HTML: 1,
   // SVG 标签
-  ELEMENT_SVG: 1 << 1,
+  ELEMENT_SVG: 1 << 1, // 左移
 
   // 普通有状态组件
   COMPONENT_STATEFUL_NORMAL: 1 << 2,
@@ -26,7 +26,7 @@ const VNODEFLAGS = {
   // Fragment
   FRAGMENT: 1 << 7,
   // Portal
-  PORTAL: 1 << 8,
+  PORTAL: 1 << 8
 }
 VNODEFLAGS.ELEMENT = VNODEFLAGS.ELEMENT_HTML | VNODEFLAGS.ELEMENT_SVG
 VNODEFLAGS.COMPONENT = VNODEFLAGS.COMPONENT_STATEFUL_NORMAL | VNODEFLAGS.COMPONENT_STATEFUL_SHOULD_KEEP_ALIVE | VNODEFLAGS.COMPONENT_STATEFUL_KEPT_ALIVE | VNODEFLAGS.COMPONENT_FUNCTIONAL
@@ -50,7 +50,7 @@ CHILDRENFLAGS.MULTIPLE_VNODES = CHILDRENFLAGS.KEYED_VNODES | CHILDRENFLAGS.NONE_
 
 export const VNodeFlags = VNODEFLAGS
 export const ChildrenFlags = CHILDRENFLAGS
-export const Fragment = Symbol()
+export const Fragment = Symbol() // 生成唯一标识
 export const Portal = Symbol()
 
 export const domPropsRE = /\[A-Z]|^(?:value|checked|selected|muted)$/

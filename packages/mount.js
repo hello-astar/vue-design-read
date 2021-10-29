@@ -8,11 +8,12 @@ const mountElement = function (vnode, container, isSVG, refNode) {
   const el = isSVG ? document.createElementNS('http://www.w3.org/2000/svg', tag) : document.createElement(tag)
   vnode.el = el
 
+  // 将 VNodeData 应用到元素上
   for (let key in data) {
     patchData(el, key, null, data[key], isSVG)
   }
 
-  // 处理children
+  // 继续挂载子节点
   if (childFlags !== ChildrenFlags.NO_CHILDREN) {
     if (childFlags & ChildrenFlags.SINGLE_VNODE) {
       mount(children, el, isSVG)
@@ -73,6 +74,7 @@ const mountPortal = function (vnode, container, isSVG) {
   vnode.el = placeholder.el
 }
 
+// 有状态组件
 const mountStatefulComponent = function (vnode, container, isSVG) {
   // 创建组件实例
   const instance = (vnode.children = new vnode.tag())
@@ -106,6 +108,7 @@ const mountStatefulComponent = function (vnode, container, isSVG) {
   instance._update()
 }
 
+// 函数式组件
 const mountFunctionalComponent = function (vnode, container, isSVG) {
   // 在函数式组件类型的 vnode 上添加 handle 属性，它是一个对象
   vnode.handle = {

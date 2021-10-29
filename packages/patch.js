@@ -1,32 +1,35 @@
 import mount from "./mount"
-import { VNodeFlags, ChildrenFlags ,domPropsRE } from '../config/consts.js'
+import { VNodeFlags, ChildrenFlags, domPropsRE } from '../config/consts.js'
 import { lis } from '../utils/index.js'
 
 // 处理展开class
 const serialization = function (args = []) {
   let res = ''
   for (let item of args) {
-      if (typeof item === 'string') {
-          res += item
-      } else if (Array.isArray(item)) {
-          res += (' ' + item.join(' '))
-      } else {
-          for (let key in item) {
-              if (item[key]) {
-                  res += (' ' + key)
-              }
-          }
+    if (typeof item === 'string') {
+      res += item
+    } else if (Array.isArray(item)) {
+      res += (' ' + item.join(' '))
+    } else {
+      for (let key in item) {
+        if (item[key]) {
+          res += (' ' + key)
+        }
       }
+    }
   }
   return res
 }
 
+// 将VNodeData应用到元素上
 export const patchData = function (el, key, prevValue, nextValue, isSVG) {
   switch (key) {
     case 'style':
+      // 将新的样式数据应用到元素
       for (let k in nextValue) {
         el.style[k] = nextValue[k]
       }
+      // 移除已经不存在的样式
       for (let k in prevValue) {
         if (!nextValue.hasOwnProperty(k)) {
           el.style[k] = ''
@@ -34,12 +37,10 @@ export const patchData = function (el, key, prevValue, nextValue, isSVG) {
       }
       break
     case 'class':
-      if (nextValue) {
-        if (isSVG) {
-          el.setAttribute('class', serialization(nextValue))
-        } else {
-          el.className = serialization(nextValue)
-        }
+      if (isSVG) {
+        el.setAttribute('class', serialization(nextValue))
+      } else {
+        el.className = serialization(nextValue)
       }
       break
     default:
@@ -65,13 +66,15 @@ export const patchData = function (el, key, prevValue, nextValue, isSVG) {
 }
 
 const replaceVNode = function (prevVNode, nextVNode, container) {
+  // 将旧的 VNode 所渲染的 DOM 从容器中移除
   container.removeChild(prevVNode.el)
-  // 如果将要被移除的 VNode 类型是组件，则需要调用该组件实例的 unmounted 钩子函数
+  // 如果将要被移除的 VNode 类型是有状态组件，则需要调用该组件实例的 unmounted 钩子函数
   if (prevVNode.flags & VNodeFlags.COMPONENT_STATEFUL_NORMAL) {
     // 类型为有状态组件的 VNode，其 children 属性被用来存储组件实例对象
     const instance = prevVNode.children
     instance.unmounted && instance.unmounted()
   }
+  // 把新的 VNode 挂载到容器中
   mount(nextVNode, container)
 }
 
@@ -178,11 +181,11 @@ const diff2 = function (prevChildren, nextChildren, container) {
       const idxInOld = prevChildren.findIndex(
         node => node && node.key === newStartVNode.key
       )
-      if (idxInOld !== -1) {
+      if (idxInOld !== -1) { // 找到可复用节点
         patch(prevChildren[idxInOld], newStartVNode, container)
         container.insertBefore(prevChildren[idxInOld].el, oldStartVNode.el)
         prevChildren[idxInOld] = undefined
-      } else {
+      } else { // 找不到可复用节点，插入新节点
         mount(newStartVNode, container, newStartVNode.flag & VNodeFlags.ELEMENT_SVG, oldStartVNode.el)
       }
       newStartVNode = nextChildren[++newStartIdx]
@@ -250,7 +253,7 @@ const diff3 = function (prevChildren, nextChildren, container) {
     while (j <= nextEnd) {
       mount(nextChildren[j++], container, false, refNode)
     }
-  } else if (j > nextEnd) {
+  } else if (j > nextEnd) { // j -> prevEnd 之间的节点应被删除
     while (j <= prevEnd) {
       container.removeChild(prevChildren[j++].el)
     }
@@ -263,12 +266,13 @@ const diff3 = function (prevChildren, nextChildren, container) {
     let pos = 0
     let patched = 0
     // 初始化source数组
+    // source数组存储新 children 中的节点在旧 children 中的位置，后面将会使用它计算出一个最长递增子序列，并用于 DOM 移动
     for (let i = 0; i < nextLeft; i++) {
       source.push(-1)
     }
     // 构建索引表
     const keyIndex = {}
-    for(let i = nextStart; i <= nextEnd; i++) {
+    for (let i = nextStart; i <= nextEnd; i++) {
       keyIndex[nextChildren[i].key] = i
     }
     for (let i = prevstart; i <= prevEnd; i++) {
@@ -299,6 +303,7 @@ const diff3 = function (prevChildren, nextChildren, container) {
     }
     if (moved) {
       // 如果 moved 为真，则需要进行 DOM 移动操作
+      // 如果 moved 为假，则说明新节点的递增顺序与旧节点相同，无需移动
       // 计算最长递增子序列的index
       const seq = lis(source)
       // j 指向最长递增子序列的最后一个值
@@ -306,44 +311,44 @@ const diff3 = function (prevChildren, nextChildren, container) {
       // 从后向前遍历新 children 中的剩余未处理节点
       for (let i = nextLeft - 1; i >= 0; i--) {
         if (source[i] === -1) {
-            // 作为全新的节点挂载
-            // 该节点在新 children 中的真实位置索引
-            const pos = i + nextStart
-            const nextVNode = nextChildren[pos]
-            // 该节点下一个节点的位置索引
-            const nextPos = pos + 1
-            // 挂载
-            mount(
-              nextVNode,
-              container,
-              false,
-              nextPos < nextChildren.length
-                ? nextChildren[nextPos].el
-                : null
-            )
-          } else if (i !== seq[j]) {
-            // 说明该节点需要移动
-            // 该节点在新 children 中的真实位置索引
-            const pos = i + nextStart
-            const nextVNode = nextChildren[pos]
-            // 该节点下一个节点的位置索引
-            const nextPos = pos + 1
-            // 移动
-            container.insertBefore(
-              nextVNode.el,
-              nextPos < nextChildren.length
-                ? nextChildren[nextPos].el
-                : null
-            )
-          } else {
-            // 当 i === seq[j] 时，说明该位置的节点不需要移动
-            // 并让 j 指向下一个位置
-            j--
-          }
+          // 作为全新的节点挂载
+          // 该节点在新 children 中的真实位置索引
+          const pos = i + nextStart
+          const nextVNode = nextChildren[pos]
+          // 该节点下一个节点的位置索引
+          const nextPos = pos + 1
+          // 挂载
+          mount(
+            nextVNode,
+            container,
+            false,
+            nextPos < nextChildren.length
+              ? nextChildren[nextPos].el
+              : null
+          )
+        } else if (i !== seq[j]) {
+          // 说明该节点需要移动
+          // 该节点在新 children 中的真实位置索引
+          const pos = i + nextStart
+          const nextVNode = nextChildren[pos]
+          // 该节点下一个节点的位置索引
+          const nextPos = pos + 1
+          // 移动
+          container.insertBefore(
+            nextVNode.el,
+            nextPos < nextChildren.length
+              ? nextChildren[nextPos].el
+              : null
+          )
+        } else {
+          // 当 i === seq[j] 时，说明该位置的节点不需要移动
+          // 并让 j 指向下一个位置
+          j--
         }
       }
     }
   }
+}
 // 3 * 3 = 9种情况
 const patchChildren = function (prevChildFlags, nextChildFlags, prevChildren, nextChildren, container) {
   switch (prevChildFlags) {
@@ -380,13 +385,13 @@ const patchChildren = function (prevChildFlags, nextChildFlags, prevChildren, ne
     default:
       switch (nextChildFlags) {
         case ChildrenFlags.SINGLE_VNODE:
-          for(let i = 0; i < prevChildren.length; i++) {
+          for (let i = 0; i < prevChildren.length; i++) {
             container.removeChild(prevChildren[i].el)
           }
           mount(nextChildren, container)
           break
         case ChildrenFlags.NO_CHILDREN:
-          for(let i = 0; i < prevChildren.length; i++) {
+          for (let i = 0; i < prevChildren.length; i++) {
             container.removeChild(prevChildren[i].el)
           }
           break
@@ -442,15 +447,15 @@ const patchElement = function (prevVNode, nextVNode, container) {
 }
 
 const patchComponent = function (prevVNode, nextVNode, container) {
-  if (nextVNode.tag !== prevVNode.tag) {
+  if (nextVNode.tag !== prevVNode.tag) { // 替换组件
     replaceVNode(prevVNode, nextVNode, container)
   } else if (nextVNode.flags & VNodeFlags.COMPONENT_STATEFUL_NORMAL) { // 有状态组件
-      // 1、获取组件实例
-      const instance = (nextVNode.children = prevVNode.children)
-      // 2、更新 props
-      instance.$props = nextVNode.data
-      // 3、更新组件
-      instance._update()
+    // 1、获取组件实例
+    const instance = (nextVNode.children = prevVNode.children)
+    // 2、更新 props
+    instance.$props = nextVNode.data
+    // 3、更新组件
+    instance._update()
   } else { // 函数式组件
     // 通过 prevVNode.handle 拿到 handle 对象
     const handle = (nextVNode.handle = prevVNode.handle)
@@ -467,7 +472,7 @@ const patchComponent = function (prevVNode, nextVNode, container) {
 const patchText = function (prevVNode, nextVNode) {
   const el = (nextVNode.el = prevVNode.el)
   if (nextVNode.children !== prevVNode.children) {
-      el.nodeValue = nextVNode.children
+    el.nodeValue = nextVNode.children
   }
 }
 
@@ -500,11 +505,11 @@ const patchPortal = function (prevVNode, nextVNode, container) {
     nextVNode.children,
     prevVNode.tag // 注意容器元素是旧的 container
   )
-  // 让 nextVNode.el 指向 prevVNode.el
+  // 让 nextVNode.el 指向 prevVNode.el // portal使用空文本节点占位
   nextVNode.el = prevVNode.el
 
   // 如果新旧容器不同，才需要搬运
-  if (nextVNode.tag !== prevVNode.tag) {
+  if (nextVNode.tag !== prevVNode.tag) { // h函数中将portal的tag改为了data.target
     // 获取新的容器元素，即挂载目标
     const container =
       typeof nextVNode.tag === 'string'
@@ -529,21 +534,21 @@ const patchPortal = function (prevVNode, nextVNode, container) {
   }
 }
 
-function patch (prevVNode, nextVNode, container) {
+function patch(prevVNode, nextVNode, container) {
   const nextFlags = nextVNode.flags
   const prevFlags = prevVNode.flags
   if (prevFlags !== nextFlags) { // flags不同，无需对比直接替换
-      replaceVNode(prevVNode, nextVNode, container)
+    replaceVNode(prevVNode, nextVNode, container)
   } else if (nextFlags & VNodeFlags.ELEMENT) {
-      patchElement(prevVNode, nextVNode, container)
+    patchElement(prevVNode, nextVNode, container)
   } else if (nextFlags & VNodeFlags.COMPONENT) {
-      patchComponent(prevVNode, nextVNode, container)
+    patchComponent(prevVNode, nextVNode, container)
   } else if (nextFlags & VNodeFlags.TEXT) {
-      patchText(prevVNode, nextVNode)
+    patchText(prevVNode, nextVNode)
   } else if (nextFlags & VNodeFlags.FRAGMENT) {
-      patchFragment(prevVNode, nextVNode, container)
+    patchFragment(prevVNode, nextVNode, container)
   } else if (nextFlags & VNodeFlags.PORTAL) {
-      patchPortal(prevVNode, nextVNode, container)
+    patchPortal(prevVNode, nextVNode, container)
   }
 }
 
