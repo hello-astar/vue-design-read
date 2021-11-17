@@ -2,7 +2,7 @@
  * @Description: mini-vue实现
  * @Author: astar
  * @Date: 2021-11-10 15:16:27
- * @LastEditTime: 2021-11-17 15:32:30
+ * @LastEditTime: 2021-11-17 16:30:11
  * @LastEditors: astar
  */
 import {
@@ -18,6 +18,7 @@ import {
 } from '@/config/consts'
 import { h } from '@/packages/h.js'
 import { render } from '@/packages/render.js'
+import components from '@/component.js'
 
 /**
 * 入口Vue
@@ -100,7 +101,7 @@ export default class Vue {
       configurable: false,
       enumerable: true,
       get () {
-        return this.$methods[key]
+        return this.$methods[key].bind(this)
       },
       set (val) {
         this.$methods[key] = val
@@ -254,14 +255,7 @@ class Compiler {
         if (match) {
           let [str] = match
           input = input.slice(str.length)
-          // 切割成多个文本标签 // type value param
-          while (str) {
-            let [express, param] = str.match(TEXT_EXPRESS_REG) || ['', ''] // {{a}} a
-            let [front, after] = express ? str.split(express) : [str, '']
-            front && tokens.push({ type: TYPE.TEXT, value: front.trim() })
-            param && tokens.push({ type: TYPE.TEXT, param: param.trim() })
-            str = after && after.trim()
-          }
+          tokens.push({ type: TYPE.TEXT, value: str.trim() })
         }
         continue
       }
@@ -415,10 +409,14 @@ class Compiler {
           }
           return a
         case TYPE.TEXT:
-          if (node.param) {
-            return (`_c(null, null, this.${node.param})`)
+          // 将{{xx}}替换为this.xx
+          let str = `"${node.value}"`
+          while (TEXT_EXPRESS_REG.test(str)) {
+            str = str.replace(TEXT_EXPRESS_REG, (a, b) => {
+              return `" + this.${b} + "`
+            })
           }
-          return (`_c(null, null, '${node.value}')`)
+          return (`_c(null, null, ${str})`)
         case TYPE.ATTR: // 属性
           return (`${node.name}: "${node.value}"`)
         case TYPE.EXPRESS: // 表达式
@@ -491,7 +489,7 @@ Compiler.utils = {
     vnode.data.style = vnode.data.style || {}
     vnode.data.style.visibility = value ? 'visible' : 'hidden'
   },
-  _on: function (vm, vnode, value, params) {
-    vnode.data[`on${params}`] = value.bind(vm)
+  _on: function (vm, vnode, value, params) { // patchData函数已经做了统一的事件处理
+    vnode.data[`on${params}`] = value
   }
 }

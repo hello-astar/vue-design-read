@@ -2,7 +2,7 @@
  * @Author: astar
  * @Date: 2021-05-26 19:57:19
  * @LastEditors: astar
- * @LastEditTime: 2021-11-17 15:31:27
+ * @LastEditTime: 2021-11-17 16:25:40
  * @Description: 文件描述
  * @FilePath: \vue\test.js
  */
@@ -107,11 +107,13 @@ let mvvm = new Vue({
   data: function () {
     return {
       a: 100,
-      b: 2,
+      b: 1,
       input: 'hello',
-      show: false,
-      helloclassName: 'helloclassName'
+      show: false
     }
+  },
+  created () {
+    // 钩子函数开始啦
   },
   methods: {
     add () {
@@ -127,16 +129,24 @@ let mvvm = new Vue({
     }
   },
   template: `
-  <div>
-    文本渲染a + b = c：{{a}} + {{b}} = {{c}}
-    <button v-on:click="add">a + 1</button>
-    <div>v-show:</div>
-    <div v-show="show">{{input}}</div>
-    <button v-on:click="changeShow">测试v-show</button><br/>
-    v-model: <input type="text" v-model="input" />
-  </div>` // 暂时把{{test}}作为props吧
+  <ul>
+    <li>
+      1. 文本渲染<br/>
+      a = {{a}} b = {{b}}<br/>
+      a + b = c：{{a}} + {{b}} = {{c}}<br/>
+      <button v-on:click="add">a + 1</button>
+    </li>
+    <li>2. 指令测试v-show:
+      <div v-show="show">{{input}}</div>
+      <button v-on:click="changeShow">测试v-show</button><br/>
+    </li>
+    <compA></compA>
+    <li>
+      3. 指令测试v-model<br/>
+      <input type="text" v-model="input" />
+    </li>
+  </ul>` // 暂时把{{test}}作为props吧
 })
 setTimeout(() => {
-  // mvvm.show = true
-  // console.log(mvvm.add)
-}, 5000)
+  mvvm.show = true
+}, 1000)
