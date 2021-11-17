@@ -86,14 +86,14 @@ const mountStatefulComponent = function (vnode, container, isSVG) {
       // 1、拿到旧的 VNode
       const prevVNode = instance.$vnode
       // 2、重渲染新的 VNode
-      const nextVNode = (instance.$vnode = instance.render())
+      const nextVNode = (instance.$vnode = instance.$compiler.createVNode())
       // 3、patch 更新
       patch(prevVNode, nextVNode, prevVNode.el.parentNode)
       // 4、更新 vnode.el 和 $el
       instance.$el = vnode.el = instance.$vnode.el
     } else {
       // 1、渲染VNode
-      instance.$vnode = instance.render()
+      instance.$vnode = instance.$compiler.createVNode()
       // 2、挂载
       mount(instance.$vnode, container, isSVG)
       // 3、组件已挂载的标识

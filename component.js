@@ -2,12 +2,13 @@
  * @Author: astar
  * @Date: 2021-05-27 16:37:32
  * @LastEditors: astar
- * @LastEditTime: 2021-09-29 02:23:48
- * @Description: 文件描述
+ * @LastEditTime: 2021-11-11 18:24:33
+ * @Description: 组件是输出vnode的函数
  * @FilePath: \vue\component.js
 */
 import { h } from './packages/h.js'
 
+// 函数式组件
 export function Child (props) {
   let children = []
   for (let i = 0; i < props.msg.length; i++) {
@@ -16,18 +17,24 @@ export function Child (props) {
   return h('ul', null, children)
 }
 
-export function Parent (props) {
-  // return h(Child, { msg: props.msg }, null)
-  return h('div', props, props.msg)
+// 有状态组件
+export class Parent {
+  render () {
+    let props = this.$props
+    return h('div', null, [h('span', null, 'diff结果示例'), h(Child, props, null)])
+  }
 }
 
-// class Child {
-//   render () {
-//     return h('div', null, this.$props.msg)
-//   }
-// }
-// class Parent {
-//   render () {
-//     return h(Child, { msg: this.$props.msg }, null)
-//   }
-// }
+// 有状态组件
+export const CompA = {
+  name: 'comp-a',
+  data () {
+    return {
+      a: 100
+    }
+  },
+  template: `<div>hello world</div>`, // 通过compiler生成_render函数，每次数据更新重新调用_render函数
+  // _render () {
+  //   return createElement('div', null, 'hello world')
+  // }
+}

@@ -2,12 +2,14 @@
  * @Author: astar
  * @Date: 2021-05-19 18:22:30
  * @LastEditors: astar
- * @LastEditTime: 2021-10-29 12:05:13
+ * @LastEditTime: 2021-11-11 17:42:12
  * @Description: 文件描述
  * @FilePath: \vue\webpack.config.js
  */
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 const path = require('path')
+const resolve = dir => path.resolve(__dirname, dir)
+
 
 module.exports = {
   entry: process.env.NODE_ENV === 'development' ? './test.js' : './index.js',
@@ -15,6 +17,10 @@ module.exports = {
     filename: 'index.js',
     libraryTarget: 'umd',
     library: 'Vue'
+  },
+  devtool: 'source-map',
+  optimization: {
+      minimize: false
   },
   devServer: {
     contentBase: path.resolve(__dirname, 'dist'),
@@ -43,5 +49,11 @@ module.exports = {
       filename: 'index.html',
       template: 'index.html'
     }),
-  ]
+  ],
+  resolve: {
+    // 设置别名
+    alias: {
+      '@': resolve('./')
+    }
+  }
 }

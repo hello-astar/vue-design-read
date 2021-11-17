@@ -2,10 +2,11 @@
  * @Author: astar
  * @Date: 2021-05-19 15:31:14
  * @LastEditors: astar
- * @LastEditTime: 2021-10-03 22:21:29
+ * @LastEditTime: 2021-11-16 17:13:08
  * @Description: 文件描述
  * @FilePath: \vue\config\consts.js
  */
+// VNode部分
 const VNODEFLAGS = {
   // html 标签
   ELEMENT_HTML: 1,
@@ -54,3 +55,33 @@ export const Fragment = Symbol() // 生成唯一标识
 export const Portal = Symbol()
 
 export const domPropsRE = /\[A-Z]|^(?:value|checked|selected|muted)$/
+
+
+// AST语法树部分
+export const TYPE = {
+  START: 'start', // 开始标签
+  CLOSE: 'close', // 自闭合标签
+  END: 'end', // 闭合标签
+  TEXT: 'text', // 文本标签
+  FRAGMENT: 'fragment',
+  ATTR: 'attr', // 标签属性
+  EXPRESS: 'express', // 表达式属性
+  DIRECTIVE: 'directive' // 指令
+}
+// token匹配的正则表达式
+// 匹配开始标签 例如 <div class="app">
+export const START_TAG_REG = /^<\s*([a-z-_]+)\s*([^>]*)>/i
+// 匹配结束标签 例如 </div>
+export const END_TAG_REG = /^<\s*\/\s*([a-z-_]+)\s*>/i
+// 判断是否为自闭和标签 例如  <input :value="model"/>
+export const CLOSE_TAG_REG = /\/\s*$/
+// 匹配属性 例如 class="app"
+export const ATTR_REG = /([\w-:]+)\s*(=\s*"([^"]+)")?/ig
+// 判断是否为动态属性 例如 :value="model"、{{test}}
+export const EXPRESS_REG = /^:/
+// 判断是否为指令
+export const DIRECTIVE_REG = /^v-/
+// 提取文本节点 mini-vue
+export const TEXT_REG = /^[^<>]+/
+// 提取文本节点的{{}}
+export const TEXT_EXPRESS_REG = /\{\{(.*?)\}\}/

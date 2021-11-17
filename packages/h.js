@@ -2,7 +2,7 @@
  * @Author: astar
  * @Date: 2021-05-19 18:14:57
  * @LastEditors: astar
- * @LastEditTime: 2021-10-08 14:41:41
+ * @LastEditTime: 2021-11-16 18:04:08
  * @Description: 文件描述
  * @FilePath: \vue\packages\h.js
  */
@@ -45,6 +45,8 @@ export const h = function (tag, data, children) {
   } else if (tag === Portal) {
     flags === VNodeFlags.Portal
     tag = data && data.target // 将tag改为data.target的值
+  } else if (tag === null) {
+    return createTextVNode(children + '')
   } else {
     if (tag !== null && typeof tag === 'object') { // vue2
       flags = tag.functional

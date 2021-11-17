@@ -328,6 +328,9 @@ const diff3 = function (prevChildren, nextChildren, container) {
               ? nextChildren[nextPos].el
               : null
           )
+          console.log('在'+ (nextPos < nextChildren.length
+          ? nextChildren[nextPos].el.innerHTML
+          : null) +'前面插入节点' + nextVNode.key)
         } else if (i !== seq[j]) {
           // 说明该节点需要移动
           // 该节点在新 children 中的真实位置索引
@@ -342,10 +345,14 @@ const diff3 = function (prevChildren, nextChildren, container) {
               ? nextChildren[nextPos].el
               : null
           )
+          console.log('将' + nextVNode.el.innerHTML + '移动到' + (nextPos < nextChildren.length
+            ? nextChildren[nextPos].el.innerHTML
+            : null + '前面'))
         } else { // 存在于最长递增子序列中，无需移动
           // 当 i === seq[j] 时，说明该位置的节点不需要移动
           // 并让 j 指向下一个位置
           j--
+          console.log('无需移动的节点' + nextChildren[i + nextStart].key)
         }
       }
     }

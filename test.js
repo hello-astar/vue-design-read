@@ -2,16 +2,15 @@
  * @Author: astar
  * @Date: 2021-05-26 19:57:19
  * @LastEditors: astar
- * @LastEditTime: 2021-09-29 02:26:01
+ * @LastEditTime: 2021-11-17 15:31:27
  * @Description: 文件描述
  * @FilePath: \vue\test.js
  */
 import { render } from './packages/render.js'
 import { h } from './packages/h.js'
 import * as components from './component.js'
+import Vue from './packages/Vue.js'
 
-
-let activeUpdate = null
 class MVVM {
   constructor (options) {
     this.$options = options || {}
@@ -22,15 +21,20 @@ class MVVM {
     this.observe()
     this.compile(this.$el)
   }
-  
-  observe () {
+
+  /**
+  * 监听所有属性
+  * @author astar
+  * @date 2021-10-01 16:51
+  */
+  observe() {
     for (let key in this._data) {
       let dep = new Dep()
       Object.defineProperty(this, key, {
-        configurable: true,
+        configurable: false,
         enumerable: true,
         get: () => {
-          dep.depend()
+          Dep.target && dep.addSub(Dep.target)
           return this._data[key]
         },
         set: (val) => {
@@ -43,48 +47,19 @@ class MVVM {
 
   // 解析DOM，生成VNODE
   // 目前只能解析一行。。
-  compile (el) {
+  compile(el) {
     // let reg = /\{\{(.*)\}\}/ // 简单匹配{{test}}式子，获取绑定的data
     let tagNameReg = /^\<(.*)\>\{\{(.*)\}\}\<\/(.*)\>/ // 简单匹配tagname
     if (tagNameReg.test(this.$options.template)) {
       const _this = this
       let key = RegExp.$2
       let tagName = RegExp.$3
-      activeUpdate = function () {
-      if (key in _this) {
-          render(h(components[tagName] || tagName, { msg: _this[key], onclick: _this._methods.add.bind(_this) }, null), el)
-        }
-      }
-      activeUpdate()
-      activeUpdate = null
+      let watcher = new Watcher(function () {
+        let vnode = h(components[tagName] || tagName, { msg: _this[key], onclick: _this.$options.methods.add.bind(_this) }, null)
+        render(vnode, el)
+      })
+      watcher.update()
     }
-    // console.log(tagNameReg.test(template))
-    // let children = el.childNodes
-    // if (!children.length) return
-    // for (let i = 0; i < children.length; i++) {
-    //   let child = children[i]
-    //   let nodeType = child.nodeType
-    //   if (nodeType === 3 && child.textContent) { // 普通文本
-    //     if (reg.test(child.textContent)) {
-    //       const _this = this
-    //       let key = RegExp.$1
-    //       activeUpdate = function () {
-    //         if (key in _this) {
-    //           console.log(el)
-    //           const vnode = h(null, null, _this[key])
-    //           console.log(vnode)
-    //           render(vnode, el)
-    //           // child.textContent = _this[key]
-    //         }
-    //       }
-    //       activeUpdate()
-    //       activeUpdate = null
-    //     }
-    //   } else {
-    //     // render(h(child.tagName.toLowerCase()))
-    //     this.compile(child)
-    //   }
-    // }
   }
 }
 
@@ -93,31 +68,75 @@ class Dep {
     this.subs = new Set()
   }
 
-  depend () {
-    if (activeUpdate) {
-      this.subs.add(activeUpdate)
-    }
+  addSub (sub) {
+    this.subs.add(sub)
   }
 
   notify () {
-    this.subs.forEach(sub => sub())
+    this.subs.forEach(sub => sub.update())
   }
 }
 
-let mvvm = new MVVM({
+// 作为桥梁，实现双向数据绑定
+class Watcher {
+  constructor (func) {
+    this.cb = func
+    this.depIds = {}
+  }
+
+  get () {
+    console.log('hhh')
+  }
+  // 数据更新 -> 页面更新
+  update () {
+    Dep.target = this
+    this.cb()
+    Dep.target = null
+  }
+
+  // 页面更新 -> 数据更新
+  addDep (depIds) {
+    this.deps.add(depIds)
+  }
+}
+
+
+// 测试diff算法
+let mvvm = new Vue({
   el: '#app',
   data: function () {
     return {
-      test: 1
+      a: 100,
+      b: 2,
+      input: 'hello',
+      show: false,
+      helloclassName: 'helloclassName'
     }
   },
   methods: {
-    add (e) {
-      this.test++
+    add () {
+      this.a++
+    },
+    changeShow () {
+      this.show = !this.show
     }
   },
-  template: `<Parent @click="add">{{test}}</Parent>` // 暂时把{{test}}作为props吧
+  computed: {
+    c: function () {
+      return this.a + this.b
+    }
+  },
+  template: `
+  <div>
+    文本渲染a + b = c：{{a}} + {{b}} = {{c}}
+    <button v-on:click="add">a + 1</button>
+    <div>v-show:</div>
+    <div v-show="show">{{input}}</div>
+    <button v-on:click="changeShow">测试v-show</button><br/>
+    v-model: <input type="text" v-model="input" />
+  </div>` // 暂时把{{test}}作为props吧
 })
 setTimeout(() => {
-  mvvm.test = 100
-}, 1000)
+  // mvvm.show = true
+  // console.log(mvvm.add)
+}, 5000)
