@@ -2,7 +2,7 @@
  * @Description: mini-vue实现
  * @Author: astar
  * @Date: 2021-11-10 15:16:27
- * @LastEditTime: 2021-11-18 13:41:14
+ * @LastEditTime: 2021-11-18 13:47:53
  * @LastEditors: astar
  */
 import {
@@ -53,6 +53,11 @@ export default class Vue {
     Dep.target = null
   }
 
+  /**
+  * 数据代理，data\props\methods\computed等等
+  * @author astar
+  * @date 2021-11-18 13:47
+  */
   _proxy (originKey, getFunc, setFunc) {
     if (!this[originKey] || typeof this[originKey] !== 'object') return
     Object.keys(this[originKey]).forEach(key => {
@@ -69,26 +74,6 @@ export default class Vue {
       })
     })
   }
-
-  /**
-  * 数据代理 this.xx => this.$data.xx
-  * @author astar
-  * @date 2021-11-12 16:26
-  */
-  // _proxyData () {
-  //   Object.keys(this.$data).forEach(key => {
-  //     Object.defineProperty(this, key, {
-  //       configurable: false,
-  //       enumerable: true,
-  //       get () {
-  //         return this.$data[key]
-  //       },
-  //       set (val) {
-  //         this.$data[key] = val
-  //       }
-  //     })
-  //   })
-  // }
 }
 
 /**
