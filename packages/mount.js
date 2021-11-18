@@ -80,6 +80,7 @@ const mountStatefulComponent = function (vnode, container, isSVG) {
   const instance = (vnode.children = new vnode.tag())
   // 初始化 props
   instance.$props = vnode.data
+  instance.$container = container
   instance._update = function () {
     // 如果 instance._mounted 为真，说明组件已挂载，应该执行更新操作
     if (instance._mounted) {

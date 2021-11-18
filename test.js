@@ -2,7 +2,7 @@
  * @Author: astar
  * @Date: 2021-05-26 19:57:19
  * @LastEditors: astar
- * @LastEditTime: 2021-11-17 16:25:40
+ * @LastEditTime: 2021-11-18 13:36:38
  * @Description: 文件描述
  * @FilePath: \vue\test.js
  */
@@ -103,7 +103,7 @@ class Watcher {
 
 // 测试diff算法
 let mvvm = new Vue({
-  el: '#app',
+  mountPlace: '#app',
   data: function () {
     return {
       a: 100,
@@ -140,13 +140,13 @@ let mvvm = new Vue({
       <div v-show="show">{{input}}</div>
       <button v-on:click="changeShow">测试v-show</button><br/>
     </li>
-    <compA></compA>
     <li>
       3. 指令测试v-model<br/>
       <input type="text" v-model="input" />
     </li>
-  </ul>` // 暂时把{{test}}作为props吧
+    <li>
+      4. 组件测试
+      <compA :message="input"></compA>
+    </li>
+  </ul>`
 })
-setTimeout(() => {
-  mvvm.show = true
-}, 1000)

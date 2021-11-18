@@ -2,7 +2,7 @@
  * @Description: mini-vue实现
  * @Author: astar
  * @Date: 2021-11-10 15:16:27
- * @LastEditTime: 2021-11-17 16:30:11
+ * @LastEditTime: 2021-11-18 13:41:14
  * @LastEditors: astar
  */
 import {
@@ -18,7 +18,7 @@ import {
 } from '@/config/consts'
 import { h } from '@/packages/h.js'
 import { render } from '@/packages/render.js'
-import components from '@/component.js'
+import * as components from '@/component.js'
 
 /**
 * 入口Vue
@@ -27,27 +27,47 @@ import components from '@/component.js'
 */
 export default class Vue {
   constructor (options) {
+    this.$el = null
     this.$options = options || {}
     this.$data = this.$options.data()
-    this.$el = typeof options.el === 'string' ? document.querySelector(options.el) : options.el
-    this.$computed = this.$options.computed
-    this.$methods = this.$options.methods
+    this.$container = typeof options.mountPlace === 'string' ? document.querySelector(options.mountPlace) : options.mountPlace
+    this.$computed = this.$options.computed || {}
+    this.$methods = this.$options.methods || {}
+    this.$props = this.$options.props || {}
     // 数据代理
-    this._proxyData()
-    this._proxyComputed()
-    this._proxyMethods()
+    const _this = this
+    this._proxy('$data', val => val)
+    this._proxy('$computed', val => val.call(_this), (key) => { throw new Error('不能修改computed数据 => ' + key)})
+    this._proxy('$methods', val => val.bind(_this), (key) => { throw new Error('不能修改methods => ' + key)})
+    this._proxy('$props', val => val, (key) => { throw new Error('不能修改props => ' + key)})
     // 数据劫持
     new Observer(this.$data)
     // 模板解析
-    if (this.$el) {
-      this.$compiler = new Compiler(this)
-      let watcher = new Watcher(this, function () {
-        render(this.$compiler.createVNode(h, _wDirective), this.$el)
+    this.$compiler = new Compiler(this)
+    let watcher = new Watcher(this, function () {
+      this.$vnode = this.$compiler.createVNode()
+      this.$container && render(this.$vnode, this.$container)
+    })
+    Dep.target = watcher
+    watcher.update()
+    Dep.target = null
+  }
+
+  _proxy (originKey, getFunc, setFunc) {
+    if (!this[originKey] || typeof this[originKey] !== 'object') return
+    Object.keys(this[originKey]).forEach(key => {
+      Object.defineProperty(this, key, {
+        configurable: false,
+        enumerable: true,
+        get () {
+          return getFunc(this[originKey][key])
+        },
+        set (val) {
+          setFunc && setFunc(key, val)
+          this[originKey][key] = val
+        }
       })
-      Dep.target = watcher
-      watcher.update()
-      Dep.target = null
-    }
+    })
   }
 
   /**
@@ -55,70 +75,20 @@ export default class Vue {
   * @author astar
   * @date 2021-11-12 16:26
   */
-  _proxyData () {
-    Object.keys(this.$data).forEach(key => {
-      Object.defineProperty(this, key, {
-        configurable: false,
-        enumerable: true,
-        get () {
-          return this.$data[key]
-        },
-        set (val) {
-          this.$data[key] = val
-        }
-      })
-    })
-  }
-
-  /**
-  * computed代理
-  * @author astar
-  * @date 2021-11-16 18:23
-  */
-  _proxyComputed () {
-    Object.keys(this.$computed).forEach(key => {
-      Object.defineProperty(this, key, {
-        configurable: false,
-        enumerable: true,
-        get () {
-          return this.$computed[key].call(this)
-        },
-        set () {
-          throw new Error('can not change a computed value')
-        }
-      })
-    })
-  }
-
-  /**
-  * 代理methods
-  * @author astar
-  * @date 2021-11-17 15:06
-  */
- _proxyMethods () {
-  Object.keys(this.$methods).forEach(key => {
-    Object.defineProperty(this, key, {
-      configurable: false,
-      enumerable: true,
-      get () {
-        return this.$methods[key].bind(this)
-      },
-      set (val) {
-        this.$methods[key] = val
-      }
-    })
-  })
- }
-}
-
-
-/**
-* 组件，继承Vue，可劫持组件内的数据
-* @author astar
-* @date 2021-11-12 16:28
-*/
-export class VueComponent extends Vue {
-  
+  // _proxyData () {
+  //   Object.keys(this.$data).forEach(key => {
+  //     Object.defineProperty(this, key, {
+  //       configurable: false,
+  //       enumerable: true,
+  //       get () {
+  //         return this.$data[key]
+  //       },
+  //       set (val) {
+  //         this.$data[key] = val
+  //       }
+  //     })
+  //   })
+  // }
 }
 
 /**
@@ -168,7 +138,7 @@ class Observer {
 class Compiler {
   constructor (vm) {
     this.vm = vm
-    this.createVNode = vm.$options.render ? vm.$options.render : this.compile(vm.$options.template) // 拼装生成vnode的函数
+    this.createVNode = (vm.$options.render ? vm.$options.render : this.compile(vm.$options.template)).bind(this.vm, h, _wDirective, _generateComponent) // 拼装生成vnode的函数
   }
 
   /**
@@ -187,7 +157,7 @@ class Compiler {
     let ast = this.parser(tokens)
     let newAst = this.transformer(ast)
     let code = this.codeGenerator(newAst)
-    return new Function(code)().bind(this.vm)
+    return new Function(code)()
   }
 
   /**
@@ -348,6 +318,10 @@ class Compiler {
             node.directives = directives;
             node.attrs = node.attrs.filter(item => item.type !== TYPE.DIRECTIVE);
           }
+          // 这里处理组件
+          if (components[node.tag]) {
+            node.tag = components[node.tag]
+          }
         }
       }
     })
@@ -388,11 +362,12 @@ class Compiler {
     function recursionGenerator (node) {
       switch (node.type) {
         case TYPE.FRAGMENT: // 抽象语法的根节点
-          return `return function (_c, _wDirective) { return ${recursionGenerator(node.children[0])} }`
+          return `return function (_c, _wDirective, _generateComponent) { return ${recursionGenerator(node.children[0])} }`
         case TYPE.START:
           // _c 函数为创建VNode的函数
+          // _generateComponent 对组件特殊处理
           let code = 
-              `_c('${node.tag}', 
+              `_c(_generateComponent(this, '${node.tag}'), 
                 {${node.attrs.map(recursionGenerator)}},
                 [${node.children.map(recursionGenerator)}]
               )`;
@@ -402,7 +377,7 @@ class Compiler {
           }
           return code;
         case TYPE.CLOSE: // 自闭合标签
-          let a = (`_c('${node.tag}', {${node.attrs.map(recursionGenerator)}}, null)`)
+          let a = (`_c(_generateComponent(this, '${node.tag}'), {${node.attrs.map(recursionGenerator)}}, null)`)
           // 处理指令的情况
           if (node.directives && node.directives.length > 0) {
             return (`_wDirective(this, ${a}, [${node.directives.map(recursionGenerator)}])`)
@@ -473,6 +448,14 @@ function _wDirective (vm, vnode, directives) { // vnode, directives
     Compiler.utils[directive.name] && Compiler.utils[directive.name](vm, vnode, directive.value, directive.params)
   })
   return vnode
+}
+
+// 生成组件
+function _generateComponent (vm, tag) {
+  if (components[tag]) {
+    return components[tag]
+  }
+  return tag
 }
 
 /**

@@ -2,11 +2,12 @@
  * @Author: astar
  * @Date: 2021-05-19 18:14:57
  * @LastEditors: astar
- * @LastEditTime: 2021-11-16 18:04:08
+ * @LastEditTime: 2021-11-18 13:22:51
  * @Description: 文件描述
  * @FilePath: \vue\packages\h.js
  */
 import { VNodeFlags, ChildrenFlags, Fragment, Portal } from '../config/consts.js'
+import Vue from './Vue.js'
 
 // 为vnode的children增加key
 const normalizeVNodes = function (children) {
@@ -52,6 +53,15 @@ export const h = function (tag, data, children) {
       flags = tag.functional
         ? VNodeFlags.COMPONENT_FUNCTIONAL
         : VNodeFlags.COMPONENT_STATEFUL_NORMAL
+      if (flags & VNodeFlags.COMPONENT_STATEFUL_NORMAL) {
+        let temp = tag
+        class VueComponent extends Vue {
+          constructor () {
+            super(temp)
+          }
+        }
+        tag = VueComponent
+      }
     } else if (typeof tag === 'function') { // vue3
       flags = tag.prototype && tag.prototype.render
         ? VNodeFlags.COMPONENT_STATEFUL_NORMAL  // 有状态组件

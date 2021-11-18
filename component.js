@@ -2,7 +2,7 @@
  * @Author: astar
  * @Date: 2021-05-27 16:37:32
  * @LastEditors: astar
- * @LastEditTime: 2021-11-11 18:24:33
+ * @LastEditTime: 2021-11-18 13:34:38
  * @Description: 组件是输出vnode的函数
  * @FilePath: \vue\component.js
 */
@@ -26,15 +26,32 @@ export class Parent {
 }
 
 // 有状态组件
-export const CompA = {
+export const compA = {
   name: 'comp-a',
   data () {
     return {
       a: 100
     }
   },
-  template: `<div>hello world</div>`, // 通过compiler生成_render函数，每次数据更新重新调用_render函数
-  // _render () {
-  //   return createElement('div', null, 'hello world')
-  // }
+  props: {
+    message: {
+      type: 'string'
+    }
+  },
+  computed: {
+    b: function () {
+      return this.a + 100
+    }
+  },
+  methods: {
+    add () {
+      this.message = 6666
+    }
+  },
+  template: `<div>
+    组件内数据{{a}}<br/>
+    组件内computed: a + 100 = {{b}}<br/>
+    传过来的组件props message = {{message}}
+    <button v-on:click="add">修改props</button>
+  </div>`
 }
