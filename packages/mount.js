@@ -79,11 +79,11 @@ const mountStatefulComponent = function (vnode, container, isSVG) {
   // 创建组件实例
   const instance = (vnode.children = new vnode.tag())
   // 初始化 props
-  instance.$props = vnode.data
+  instance._props = vnode.data
   instance.$container = container
   instance._update = function () {
-    // 如果 instance._mounted 为真，说明组件已挂载，应该执行更新操作
-    if (instance._mounted) {
+    // 如果 instance._isMounted 为真，说明组件已挂载，应该执行更新操作
+    if (instance._isMounted) {
       // 1、拿到旧的 VNode
       const prevVNode = instance.$vnode
       // 2、重渲染新的 VNode
@@ -93,16 +93,18 @@ const mountStatefulComponent = function (vnode, container, isSVG) {
       // 4、更新 vnode.el 和 $el
       instance.$el = vnode.el = instance.$vnode.el
     } else {
+      instance.callHook && instance.callHook('beforeMount')
       // 1、渲染VNode
       instance.$vnode = instance.$compiler.createVNode()
       // 2、挂载
       mount(instance.$vnode, container, isSVG)
       // 3、组件已挂载的标识
-      instance._mounted = true
+      instance._isMounted = true
       // 4、el 属性值 和 组件实例的 $el 属性都引用组件的根DOM元素
       instance.$el = vnode.el = instance.$vnode.el
+      instance.$container.vnode = vnode
       // 5、调用 mounted 钩子
-      instance.mounted && instance.mounted()
+      instance.callHook && instance.callHook('mounted')
     }
   }
 

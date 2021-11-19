@@ -2,7 +2,7 @@
  * @Author: astar
  * @Date: 2021-05-26 19:57:19
  * @LastEditors: astar
- * @LastEditTime: 2021-11-18 13:43:42
+ * @LastEditTime: 2021-11-19 14:56:50
  * @Description: 测试环境入口文件
  * @FilePath: \vue\test.js
  */
@@ -19,8 +19,30 @@ let mvvm = new Vue({
       show: false
     }
   },
+  beforeCreate () {
+    console.log('parent beforeCreate')
+  },
   created () {
     // 钩子函数开始啦
+    console.log('parent created')
+  },
+  beforeMount () {
+    console.log('parent beforeMount')
+  },
+  mounted () {
+    console.log('parent mounted')
+  },
+  beforeUpdate () {
+    console.log('parent beforeUpdate')
+  },
+  updated () {
+    console.log('parent updated')
+  },
+  beforeDestroy () {
+    console.log('parent beforeDestroy')
+  },
+  destroyed () {
+    console.log('parent destroyed')
   },
   methods: {
     add () {
@@ -57,3 +79,6 @@ let mvvm = new Vue({
     </li>
   </ul>`
 })
+setTimeout(() => {
+  // console.log(mvvm)
+}, 1000);

@@ -2,7 +2,7 @@
  * @Author: astar
  * @Date: 2021-05-27 16:37:32
  * @LastEditors: astar
- * @LastEditTime: 2021-11-18 13:34:38
+ * @LastEditTime: 2021-11-19 15:06:20
  * @Description: 组件是输出vnode的函数
  * @FilePath: \vue\component.js
 */
@@ -43,9 +43,34 @@ export const compA = {
       return this.a + 100
     }
   },
+  beforeCreate () {
+    console.log('child beforeCreate')
+  },
+  created () {
+    // 钩子函数开始啦
+    console.log('child created')
+  },
+  beforeMount () {
+    console.log('child beforeMount')
+  },
+  mounted () {
+    console.log('child mounted')
+  },
+  beforeUpdate () {
+    console.log('child beforeUpdate')
+  },
+  updated () {
+    console.log('child updated')
+  },
+  beforeDestroy () {
+    console.log('child beforeDestroy')
+  },
+  destroyed () {
+    console.log('child destroyed')
+  },
   methods: {
     add () {
-      this.message = 6666
+      this.a++
     }
   },
   template: `<div>

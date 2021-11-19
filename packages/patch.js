@@ -462,7 +462,7 @@ const patchComponent = function (prevVNode, nextVNode, container) {
     // 1、获取组件实例
     const instance = (nextVNode.children = prevVNode.children)
     // 2、更新 props
-    instance.$props = nextVNode.data
+    instance._props = nextVNode.data
     // 3、更新组件
     instance._update()
   } else { // 函数式组件

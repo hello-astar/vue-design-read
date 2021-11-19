@@ -2,7 +2,7 @@
  * @Description: mini-vue实现
  * @Author: astar
  * @Date: 2021-11-10 15:16:27
- * @LastEditTime: 2021-11-18 13:47:53
+ * @LastEditTime: 2021-11-19 15:42:58
  * @LastEditors: astar
  */
 import {
@@ -27,30 +27,71 @@ import * as components from '@/component.js'
 */
 export default class Vue {
   constructor (options) {
+    this._init(options)
+  }
+
+  /**
+  * 初始化
+  * @author astar
+  * @date 2021-11-18 14:12
+  */
+  _init (options) {
     this.$el = null
     this.$options = options || {}
-    this.$data = this.$options.data()
     this.$container = typeof options.mountPlace === 'string' ? document.querySelector(options.mountPlace) : options.mountPlace
-    this.$computed = this.$options.computed || {}
-    this.$methods = this.$options.methods || {}
-    this.$props = this.$options.props || {}
+    this._initLifecycle()
+    this.callHook('beforeCreate')
+    this._data = this.$options.data()
+    this._props = this.$options.props || {} // props
     // 数据代理
     const _this = this
-    this._proxy('$data', val => val)
-    this._proxy('$computed', val => val.call(_this), (key) => { throw new Error('不能修改computed数据 => ' + key)})
-    this._proxy('$methods', val => val.bind(_this), (key) => { throw new Error('不能修改methods => ' + key)})
-    this._proxy('$props', val => val, (key) => { throw new Error('不能修改props => ' + key)})
+    this._proxy(this, '_data', val => val)
+    this._proxy(this.$options, 'computed', val => val.call(_this), (key) => { throw new Error('不能修改computed数据 => ' + key)})
+    this._proxy(this.$options, 'methods', val => val.bind(_this), (key) => { throw new Error('不能修改methods => ' + key)})
+    this._proxy(this, '_props', val => val, (key) => { throw new Error('不能修改props => ' + key)})
     // 数据劫持
-    new Observer(this.$data)
+    new Observer(this._data)
+    this.callHook('created')
     // 模板解析
     this.$compiler = new Compiler(this)
     let watcher = new Watcher(this, function () {
+      if (!this.$container) return
+      !this._isMounted ? this.callHook('beforeMount') : this.callHook('beforeUpdate')
       this.$vnode = this.$compiler.createVNode()
-      this.$container && render(this.$vnode, this.$container)
+      render(this.$vnode, this.$container)
+      this.$el = this.$vnode.el
+      !this._isMounted ? this.callHook('mounted') : this.callHook('updated')
     })
-    Dep.target = watcher
     watcher.update()
-    Dep.target = null
+  }
+
+  /**
+  * 初始化生命周期
+  * @author astar
+  * @date 2021-11-18 16:00
+  */
+  _initLifecycle () {
+    this._isMounted = false
+    this._isDestroyed = false
+    this._isBeingDestroyed = false
+  }
+
+  /**
+  * 调用生命周期钩子函数
+  * @author astar
+  * @date 2021-11-18 16:05
+  */
+  callHook (hook) {
+    this.$options[hook] && this.$options[hook]()
+  }
+
+  /**
+  * 初始化事件
+  * @author astar
+  * @date 2021-11-18 16:02
+  */
+  _initEvents () {
+
   }
 
   /**
@@ -58,18 +99,18 @@ export default class Vue {
   * @author astar
   * @date 2021-11-18 13:47
   */
-  _proxy (originKey, getFunc, setFunc) {
-    if (!this[originKey] || typeof this[originKey] !== 'object') return
-    Object.keys(this[originKey]).forEach(key => {
+  _proxy (obj, originKey, getFunc, setFunc) {
+    if (!obj[originKey] || typeof obj[originKey] !== 'object') return
+    Object.keys(obj[originKey]).forEach(key => {
       Object.defineProperty(this, key, {
         configurable: false,
         enumerable: true,
         get () {
-          return getFunc(this[originKey][key])
+          return getFunc(obj[originKey][key])
         },
         set (val) {
           setFunc && setFunc(key, val)
-          this[originKey][key] = val
+          obj[originKey][key] = val
         }
       })
     })
@@ -123,7 +164,7 @@ class Observer {
 class Compiler {
   constructor (vm) {
     this.vm = vm
-    this.createVNode = (vm.$options.render ? vm.$options.render : this.compile(vm.$options.template)).bind(this.vm, h, _wDirective, _generateComponent) // 拼装生成vnode的函数
+    this.createVNode = (vm.$options.render ? vm.$options.render : this.compile(vm.$options.template)).bind(vm, h, _wDirective, _generateComponent) // 拼装生成vnode的函数
   }
 
   /**
@@ -420,6 +461,13 @@ class Watcher {
   constructor (vm, func) {
     this.vm = vm
     this.cb = func
+    this.get() // 预生成vnode，才能将watcher加入dep中
+  }
+
+  get () {
+    Dep.target = this
+    this.vm.$compiler.createVNode()
+    Dep.target = null
   }
 
   // 数据更新 -> 页面更新
@@ -459,5 +507,8 @@ Compiler.utils = {
   },
   _on: function (vm, vnode, value, params) { // patchData函数已经做了统一的事件处理
     vnode.data[`on${params}`] = value
+  },
+  _for: function (vm, vnode, params) {
+    console.log(vm, vnode, params)
   }
 }
