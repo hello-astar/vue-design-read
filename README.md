@@ -6,8 +6,9 @@
 - [x] 转换为虚拟DOM + 各个版本的Diff算法
 - [x] 数据改变 -> 视图改变 (模板解析、数据劫持等)
 - [x] 视图改变 -> 数据改变 (事件监听、指令等)
-- [x] 生命周期钩子
+- [ ] 生命周期钩子
 - [x] 实现computed、methods
+- [ ] 
 
 [vue-design](http://hcysun.me/vue-design/zh/)
 

@@ -2,7 +2,7 @@
  * @Description: mini-vue实现
  * @Author: astar
  * @Date: 2021-11-10 15:16:27
- * @LastEditTime: 2021-11-19 15:42:58
+ * @LastEditTime: 2021-11-19 16:21:02
  * @LastEditors: astar
  */
 import {
@@ -61,6 +61,7 @@ export default class Vue {
       render(this.$vnode, this.$container)
       this.$el = this.$vnode.el
       !this._isMounted ? this.callHook('mounted') : this.callHook('updated')
+      this._isMounted = true
     })
     watcher.update()
   }
@@ -510,5 +511,11 @@ Compiler.utils = {
   },
   _for: function (vm, vnode, params) {
     console.log(vm, vnode, params)
+  }
+}
+
+export class VueComponent extends Vue {
+  constructor (options) {
+    super(options)
   }
 }

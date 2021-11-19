@@ -2,7 +2,7 @@
  * @Author: astar
  * @Date: 2021-05-19 18:14:57
  * @LastEditors: astar
- * @LastEditTime: 2021-11-18 13:22:51
+ * @LastEditTime: 2021-11-19 16:15:48
  * @Description: 文件描述
  * @FilePath: \vue\packages\h.js
  */
@@ -53,15 +53,6 @@ export const h = function (tag, data, children) {
       flags = tag.functional
         ? VNodeFlags.COMPONENT_FUNCTIONAL
         : VNodeFlags.COMPONENT_STATEFUL_NORMAL
-      if (flags & VNodeFlags.COMPONENT_STATEFUL_NORMAL) {
-        let temp = tag
-        class VueComponent extends Vue {
-          constructor () {
-            super(temp)
-          }
-        }
-        tag = VueComponent
-      }
     } else if (typeof tag === 'function') { // vue3
       flags = tag.prototype && tag.prototype.render
         ? VNodeFlags.COMPONENT_STATEFUL_NORMAL  // 有状态组件
