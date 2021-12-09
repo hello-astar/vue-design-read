@@ -2,7 +2,7 @@
  * @Author: astar
  * @Date: 2021-05-26 19:57:19
  * @LastEditors: astar
- * @LastEditTime: 2021-11-19 14:56:50
+ * @LastEditTime: 2021-12-09 16:09:54
  * @Description: 测试环境入口文件
  * @FilePath: \vue\test.js
  */
@@ -15,6 +15,7 @@ let mvvm = new Vue({
     return {
       a: 100,
       b: 1,
+      d: 5,
       input: 'hello',
       show: false
     }
@@ -77,8 +78,17 @@ let mvvm = new Vue({
       4. 组件测试
       <compA :message="input"></compA>
     </li>
+    <li>
+      5. 数据修改 --》 视图修改
+      <p>计时器倒计时{{d}}s</p>
+    </li>
   </ul>`
 })
-setTimeout(() => {
-  // console.log(mvvm)
-}, 1000);
+let timer = null
+function count () {
+  timer = setTimeout(function () {
+    if (timer) clearTimeout(timer)
+    --mvvm.d && count()
+  }, 1000)
+}
+count()

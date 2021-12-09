@@ -2,7 +2,7 @@
  * @Description: mini-vue实现
  * @Author: astar
  * @Date: 2021-11-10 15:16:27
- * @LastEditTime: 2021-11-19 16:21:02
+ * @LastEditTime: 2021-12-09 15:57:33
  * @LastEditors: astar
  */
 import {
@@ -184,7 +184,7 @@ class Compiler {
     let ast = this.parser(tokens)
     let newAst = this.transformer(ast)
     let code = this.codeGenerator(newAst)
-    return new Function(code)()
+    return new Function(['_c', '_wDirective', '_generateComponent'], code)
   }
 
   /**
@@ -389,7 +389,7 @@ class Compiler {
     function recursionGenerator (node) {
       switch (node.type) {
         case TYPE.FRAGMENT: // 抽象语法的根节点
-          return `return function (_c, _wDirective, _generateComponent) { return ${recursionGenerator(node.children[0])} }`
+          return `return ${recursionGenerator(node.children[0])}`
         case TYPE.START:
           // _c 函数为创建VNode的函数
           // _generateComponent 对组件特殊处理
