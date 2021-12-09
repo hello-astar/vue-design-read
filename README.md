@@ -8,7 +8,7 @@
 - [x] 视图改变 -> 数据改变 (事件监听、指令等)
 - [ ] 生命周期钩子
 - [x] 实现computed、methods
-- [ ] 
+- [x] 实现v-for
 
 [vue-design](http://hcysun.me/vue-design/zh/)
 

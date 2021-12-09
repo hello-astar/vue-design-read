@@ -2,7 +2,7 @@
  * @Author: astar
  * @Date: 2021-05-27 16:37:32
  * @LastEditors: astar
- * @LastEditTime: 2021-11-19 15:06:20
+ * @LastEditTime: 2021-12-09 16:28:21
  * @Description: 组件是输出vnode的函数
  * @FilePath: \vue\component.js
 */
@@ -43,40 +43,40 @@ export const compA = {
       return this.a + 100
     }
   },
-  beforeCreate () {
-    console.log('child beforeCreate')
-  },
-  created () {
-    // 钩子函数开始啦
-    console.log('child created')
-  },
-  beforeMount () {
-    console.log('child beforeMount')
-  },
-  mounted () {
-    console.log('child mounted')
-  },
-  beforeUpdate () {
-    console.log('child beforeUpdate')
-  },
-  updated () {
-    console.log('child updated')
-  },
-  beforeDestroy () {
-    console.log('child beforeDestroy')
-  },
-  destroyed () {
-    console.log('child destroyed')
-  },
+  // beforeCreate () {
+  //   console.log('child beforeCreate')
+  // },
+  // created () {
+  //   // 钩子函数开始啦
+  //   console.log('child created')
+  // },
+  // beforeMount () {
+  //   console.log('child beforeMount')
+  // },
+  // mounted () {
+  //   console.log('child mounted')
+  // },
+  // beforeUpdate () {
+  //   console.log('child beforeUpdate')
+  // },
+  // updated () {
+  //   console.log('child updated')
+  // },
+  // beforeDestroy () {
+  //   console.log('child beforeDestroy')
+  // },
+  // destroyed () {
+  //   console.log('child destroyed')
+  // },
   methods: {
-    add () {
-      this.a++
+    changeProps () {
+      this.message = '666'
     }
   },
   template: `<div>
     组件内数据{{a}}<br/>
     组件内computed: a + 100 = {{b}}<br/>
     传过来的组件props message = {{message}}
-    <button v-on:click="add">修改props</button>
+    <button v-on:click="changeProps">修改props</button>
   </div>`
 }

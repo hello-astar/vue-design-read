@@ -2,7 +2,7 @@
  * @Description: mini-vue实现
  * @Author: astar
  * @Date: 2021-11-10 15:16:27
- * @LastEditTime: 2021-12-09 15:57:33
+ * @LastEditTime: 2021-12-10 03:13:55
  * @LastEditors: astar
  */
 import {
@@ -19,12 +19,14 @@ import {
 import { h } from '@/packages/h.js'
 import { render } from '@/packages/render.js'
 import * as components from '@/component.js'
+import { Fragment } from '../config/consts'
 
 /**
 * 入口Vue
 * @author astar
 * @date 2021-11-12 16:28
 */
+
 export default class Vue {
   constructor (options) {
     this._init(options)
@@ -165,7 +167,7 @@ class Observer {
 class Compiler {
   constructor (vm) {
     this.vm = vm
-    this.createVNode = (vm.$options.render ? vm.$options.render : this.compile(vm.$options.template)).bind(vm, h, _wDirective, _generateComponent) // 拼装生成vnode的函数
+    this.createVNode = (vm.$options.render ? vm.$options.render : this.compile(vm.$options.template)).bind(vm, h) // 拼装生成vnode的函数
   }
 
   /**
@@ -184,7 +186,7 @@ class Compiler {
     let ast = this.parser(tokens)
     let newAst = this.transformer(ast)
     let code = this.codeGenerator(newAst)
-    return new Function(['_c', '_wDirective', '_generateComponent'], code)
+    return new Function(['_wDirective', '_generateComponent'], code)(this._wDirective, this._generateComponent)
   }
 
   /**
@@ -281,7 +283,7 @@ class Compiler {
   
   parser (tokens) {
     const ast = {
-      type: TYPE.FRAGMENT,
+      type: TYPE.ROOT,
       children: []
     }
     const stack = [ast]
@@ -324,31 +326,25 @@ class Compiler {
   }
 
   transformer (ast) {
+    // 这里处理指令编译
+    function parseDirective (node, parent) {
+      if (node.attrs.length >= 0) {
+        const directives = node.attrs.filter(item => item.type === TYPE.DIRECTIVE)
+        node.directives = directives
+        node.attrs = node.attrs.filter(item => item.type !== TYPE.DIRECTIVE)
+      }
+    }
     this.traverser(ast, {
       // 开始标签
       [TYPE.START]: {
         enter(node, parent) {
-          // 这里处理指令编译
-          if (node.attrs.length >= 0) {
-            const directives = node.attrs.filter(item => item.type === TYPE.DIRECTIVE);
-            node.directives = directives;
-            node.attrs = node.attrs.filter(item => item.type !== TYPE.DIRECTIVE);
-          }
+          parseDirective(node, parent)
         }
       },
       // 自闭合标签
       [TYPE.CLOSE]: {
         enter(node, parent) {
-          // 这里处理指令编译
-          if (node.attrs.length >= 0) {
-            const directives = node.attrs.filter(item => item.type === TYPE.DIRECTIVE);
-            node.directives = directives;
-            node.attrs = node.attrs.filter(item => item.type !== TYPE.DIRECTIVE);
-          }
-          // 这里处理组件
-          if (components[node.tag]) {
-            node.tag = components[node.tag]
-          }
+          parseDirective(node, parent)
         }
       }
     })
@@ -368,7 +364,7 @@ class Compiler {
         methods.enter(node, parent)
       }
       switch (node.type) {
-        case TYPE.FRAGMENT:
+        case TYPE.ROOT:
         case TYPE.START:
           traverseArray(node.children, node)
           break
@@ -388,49 +384,111 @@ class Compiler {
   codeGenerator (node) {
     function recursionGenerator (node) {
       switch (node.type) {
-        case TYPE.FRAGMENT: // 抽象语法的根节点
-          return `return ${recursionGenerator(node.children[0])}`
+        case TYPE.ROOT: // 抽象语法的根节点
+          return `return function (_c) { with (this) { return ${recursionGenerator(node.children[0])} } }`
         case TYPE.START:
-          // _c 函数为创建VNode的函数
-          // _generateComponent 对组件特殊处理
-          let code = 
-              `_c(_generateComponent(this, '${node.tag}'), 
+        case TYPE.CLOSE:
+          let code = null
+          let for_directive = node.directives.find(item => item.name === '_for')
+          if (for_directive) {
+            let forStr = for_directive.value.replace(/(.*)\sin\s\b(.*)\b/g, function (str, a, b) {
+              // 解析 v-for="(item, idx) in obj" 或 v-for="item in obj"
+              a = a.replace(/^(\()?(.*?)(\))?$/g, '[$2]')
+              return `for (var key in ${b}) {
+                var ${a} = [${b}[key], key]
+              `
+            })
+            node.directives = node.directives.filter(item => item.name !== '_for')
+            code = `(function () {
+              let reg = /(.*)\sin\s\b(.*)\b/g
+              let children = []
+              ${forStr} 
+                children.push(${recursionGenerator(node)})
+              }
+              return _c(_generateComponent(this, 'Fragment'), null, children)
+            })()`
+          } else {
+            code = 
+              `_c(_generateComponent(this, '${node.tag}'),
                 {${node.attrs.map(recursionGenerator)}},
-                [${node.children.map(recursionGenerator)}]
-              )`;
-          // 处理指令的情况
-          if (node.directives && node.directives.length > 0) {
-            return (`_wDirective(this, ${code}, [${node.directives.map(recursionGenerator)}])`)
+                ${node.children ? '[' + node.children.map(recursionGenerator) + ']' : null}
+              )`
+            // 处理指令的情况
+            if (node.directives && node.directives.length > 0) {
+              return (`_wDirective(this, ${code}, [${node.directives.map(recursionGenerator)}])`)
+            }
           }
-          return code;
-        case TYPE.CLOSE: // 自闭合标签
-          let a = (`_c(_generateComponent(this, '${node.tag}'), {${node.attrs.map(recursionGenerator)}}, null)`)
-          // 处理指令的情况
-          if (node.directives && node.directives.length > 0) {
-            return (`_wDirective(this, ${a}, [${node.directives.map(recursionGenerator)}])`)
-          }
-          return a
+    
+          return code
         case TYPE.TEXT:
           // 将{{xx}}替换为this.xx
           let str = `"${node.value}"`
           while (TEXT_EXPRESS_REG.test(str)) {
             str = str.replace(TEXT_EXPRESS_REG, (a, b) => {
-              return `" + this.${b} + "`
+              return `" + ${b} + "`
             })
           }
           return (`_c(null, null, ${str})`)
         case TYPE.ATTR: // 属性
           return (`${node.name}: "${node.value}"`)
         case TYPE.EXPRESS: // 表达式
-          return (`${node.name}: this.${node.value}`)
+          return (`${node.name}: ${node.value}`)
         case TYPE.DIRECTIVE: // 指令
-          return (`{ name: '${node.name}', value: this.${node.value}, params: '${node.params}' }`)
+          // value可以是变量名称也可以是表达式 // 需要解析
+          // v-on:click='add' => value = 'add' params = 'click'
+          // v-for='item in arr' => value = 'item in arr' params=undefined
+          return (`{ name: '${node.name}', value: '${node.value}', params: '${node.params}' }`)
         default:
           throw new TypeError(node.type)
       }
     }
     return recursionGenerator(node)
   }
+
+  _wDirective (vm, vnode, directives) {
+    directives.forEach(directive => {
+      vnode = (
+        Compiler.utils[directive.name] && Compiler.utils[directive.name](vm, vnode, directive)
+      ) || vnode
+    })
+    return vnode
+  }
+  
+  // 生成组件
+  _generateComponent (vm, tag) {
+    return components[tag] || (tag === 'Fragment' ? Fragment : tag)
+  }
+}
+
+/**
+ * 指令处理总结
+ */
+ Compiler.utils = {
+  _model: function (vm, vnode, directive) {
+    let { value } = directive
+    vnode.data.value = vm[value]
+    vnode.data['oninput'] = function (e) {
+      vm.input = e.target.value
+    }
+  },
+  _show: function (vm, vnode, directive) { // v-show
+    let { value } = directive
+    vnode.data.style = vnode.data.style || {}
+    vnode.data.style.visibility = vm[value] ? 'visible' : 'hidden'
+  },
+  _on: function (vm, vnode, directive) { // patchData函数已经做了统一的事件处理
+    let { value, params } = directive
+    vnode.data[`on${params}`] = vm[value]
+  }
+  // _for: function (vm, vnode, directive) {
+  //   console.log(vnode, directive)
+  //   debugger
+  //   // let a = h('div', null, 'hello')
+  //   // console.log(a)
+  //   // vnode.children = a
+  //   // vnode.childFlags = ChildrenFlags.SINGLE_VNODE
+  //   return h(Fragment, null, [vnode, vnode])
+  // }
 }
 
 /**
@@ -476,44 +534,6 @@ class Watcher {
     this.cb.call(this.vm)
   }
 }
-
-function _wDirective (vm, vnode, directives) { // vnode, directives
-  directives.forEach(directive => {
-    Compiler.utils[directive.name] && Compiler.utils[directive.name](vm, vnode, directive.value, directive.params)
-  })
-  return vnode
-}
-
-// 生成组件
-function _generateComponent (vm, tag) {
-  if (components[tag]) {
-    return components[tag]
-  }
-  return tag
-}
-
-/**
- * 指令处理总结
- */
-Compiler.utils = {
-  _model: function (vm, vnode, value) {
-    vnode.data.value = value
-    vnode.data['oninput'] = function (e) {
-      vm.input = e.target.value
-    }
-  },
-  _show: function (vm, vnode, value) { // v-show
-    vnode.data.style = vnode.data.style || {}
-    vnode.data.style.visibility = value ? 'visible' : 'hidden'
-  },
-  _on: function (vm, vnode, value, params) { // patchData函数已经做了统一的事件处理
-    vnode.data[`on${params}`] = value
-  },
-  _for: function (vm, vnode, params) {
-    console.log(vm, vnode, params)
-  }
-}
-
 export class VueComponent extends Vue {
   constructor (options) {
     super(options)

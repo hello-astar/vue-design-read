@@ -2,7 +2,7 @@
  * @Author: astar
  * @Date: 2021-05-19 15:31:14
  * @LastEditors: astar
- * @LastEditTime: 2021-11-16 17:13:08
+ * @LastEditTime: 2021-12-09 22:32:59
  * @Description: 文件描述
  * @FilePath: \vue\config\consts.js
  */
@@ -63,6 +63,7 @@ export const TYPE = {
   CLOSE: 'close', // 自闭合标签
   END: 'end', // 闭合标签
   TEXT: 'text', // 文本标签
+  ROOT: 'root', // 根节点
   FRAGMENT: 'fragment',
   ATTR: 'attr', // 标签属性
   EXPRESS: 'express', // 表达式属性
