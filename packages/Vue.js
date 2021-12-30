@@ -2,7 +2,7 @@
  * @Description: mini-vue实现
  * @Author: astar
  * @Date: 2021-11-10 15:16:27
- * @LastEditTime: 2021-12-10 03:13:55
+ * @LastEditTime: 2021-12-30 12:07:32
  * @LastEditors: astar
  */
 import {
@@ -48,11 +48,29 @@ export default class Vue {
     // 数据代理
     const _this = this
     this._proxy(this, '_data', val => val)
-    this._proxy(this.$options, 'computed', val => val.call(_this), (key) => { throw new Error('不能修改computed数据 => ' + key)})
     this._proxy(this.$options, 'methods', val => val.bind(_this), (key) => { throw new Error('不能修改methods => ' + key)})
     this._proxy(this, '_props', val => val, (key) => { throw new Error('不能修改props => ' + key)})
     // 数据劫持
     new Observer(this._data)
+    // computed
+    for(let key in this.$options.computed) {
+      let watcher = new Watcher(this, function () {
+        this[key] = this.$options.computed[key].call(this)
+      })
+      Dep.target = watcher
+      watcher.update()
+      Dep.target = null
+    }
+    // watch
+    for(let key in this.$options.watch) {
+      let watcher = new Watcher(this, function () {
+        this.$options.watch[key](...arguments)
+      })
+      Dep.target = watcher
+      watcher.update(this[key])
+      Dep.target = null
+    }
+
     this.callHook('created')
     // 模板解析
     this.$compiler = new Compiler(this)
@@ -65,7 +83,9 @@ export default class Vue {
       !this._isMounted ? this.callHook('mounted') : this.callHook('updated')
       this._isMounted = true
     })
+    Dep.target = watcher
     watcher.update()
+    Dep.target = null
   }
 
   /**
@@ -151,9 +171,10 @@ class Observer {
       },
       set: (val) => {
         if (value === val) return
+        let oldVal = value
         value = val
         this.observe(value) // 设置新的值需要继续劫持
-        dep.notify()
+        dep.notify(value, oldVal)
       }
     })
   }
@@ -505,8 +526,8 @@ class Dep {
     this.subs.add(watcher)
   }
 
-  notify () {
-    this.subs.forEach(watcher => watcher.update())
+  notify (newVal, oldVal) {
+    this.subs.forEach(watcher => watcher.update(newVal, oldVal))
   }
 }
 
@@ -520,18 +541,11 @@ class Watcher {
   constructor (vm, func) {
     this.vm = vm
     this.cb = func
-    this.get() // 预生成vnode，才能将watcher加入dep中
-  }
-
-  get () {
-    Dep.target = this
-    this.vm.$compiler.createVNode()
-    Dep.target = null
   }
 
   // 数据更新 -> 页面更新
-  update () {
-    this.cb.call(this.vm)
+  update (newVal, oldVal) {
+    this.cb.call(this.vm, newVal, oldVal)
   }
 }
 export class VueComponent extends Vue {

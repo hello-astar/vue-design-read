@@ -2,7 +2,7 @@
  * @Author: astar
  * @Date: 2021-05-26 19:57:19
  * @LastEditors: astar
- * @LastEditTime: 2021-12-10 03:14:38
+ * @LastEditTime: 2021-12-30 11:50:18
  * @Description: 测试环境入口文件
  * @FilePath: \vue\test.js
  */
@@ -59,7 +59,13 @@ let mvvm = new Vue({
   },
   computed: {
     c: function () {
+      console.log('cccc')
       return this.a + this.b
+    }
+  },
+  watch: {
+    a: function (val, oldVal) {
+      console.log(val, oldVal) 
     }
   },
   template: `
@@ -100,11 +106,7 @@ function count () {
   timer1 = setTimeout(function () {
     timer1 && clearTimeout(timer1)
     --mvvm.d && count()
+    !mvvm.d && (mvvm.e = ['a', 'c', 'd', 'b', 'g', 'e'])
   }, 1000)
 }
 count()
-
-let timer2 = setTimeout(() => {
-  mvvm.e = ['a', 'c', 'd', 'b', 'g', 'e']
-  timer2 && clearTimeout(timer2)
-}, 1000);
