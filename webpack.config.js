@@ -2,7 +2,7 @@
  * @Author: astar
  * @Date: 2021-05-19 18:22:30
  * @LastEditors: astar
- * @LastEditTime: 2021-11-11 17:42:12
+ * @LastEditTime: 2022-01-16 18:29:55
  * @Description: 文件描述
  * @FilePath: \vue\webpack.config.js
  */
@@ -29,6 +29,16 @@ module.exports = {
   },
   module: {
     rules: [
+      {
+        test: /\.js$/,
+        exclude: /(node_modules|bower_components)/,
+        use: {
+          loader: 'babel-loader',
+          options: {
+            presets: ['@babel/preset-env']
+          }
+        }
+      },  
       {
         test: /\.vue$/,
         exclude: /node_modules/,
